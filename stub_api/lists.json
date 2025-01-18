@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "name": "Weekly Groceries",
+    "created_at": "2025-01-01T10:00:00Z",
+    "updated_at": "2025-01-02T15:30:00Z"
+  },
+  {
+    "id": 2,
+    "name": "Party Supplies",
+    "created_at": "2025-01-05T12:45:00Z",
+    "updated_at": "2025-01-06T14:10:00Z"
+  },
+  {
+    "id": 3,
+    "name": "Holiday Packing List",
+    "created_at": "2025-01-10T08:20:00Z",
+    "updated_at": "2025-01-12T16:45:00Z"
+  }
+]
