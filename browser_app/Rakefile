@@ -1,18 +1,21 @@
-require 'rake'
-require 'opal'
+# frozen_string_literal: true
 
+require "rake"
+require "opal"
+require 'opal-browser'
 # Configuration
-SOURCE_DIR = "../core_app".freeze
-OUTPUT_FILE = "application.js".freeze
+SOURCE_DIR = "../core_app"
+SOURCE_FILE = "app/application.rb"
+OUTPUT_FILE = "dist/application.js"
 
 # Default task: Compile the app
-task :default => :compile
+task default: :compile
 
 # Task to compile the Opal app
 desc "Compile the Opal application"
-task :compile do
+task :compile => :clean do
   puts "Compiling Opal application..."
-  command = "bundle exec opal -I #{SOURCE_DIR} -c application.js.rb > #{OUTPUT_FILE}"
+  command = "bundle exec opal -Oc  -I #{SOURCE_DIR} -I ./app -c #{SOURCE_FILE} > #{OUTPUT_FILE}"
   system(command) || raise("Compilation failed")
   puts "Compilation complete: #{OUTPUT_FILE}"
 end
@@ -21,13 +24,13 @@ end
 desc "Clean up generated files"
 task :clean do
   puts "Cleaning up generated files..."
-  File.delete(OUTPUT_FILE) if File.exist?(OUTPUT_FILE)
+  FileUtils.rm_f(OUTPUT_FILE)
   puts "Clean complete"
 end
 
 # Task to run the application (optional if executable output exists)
 desc "Run the compiled application"
-task :run => :compile do
+task run: :compile do
   puts "Running the application..."
   system("node #{OUTPUT_FILE}") || raise("Failed to run application")
 end

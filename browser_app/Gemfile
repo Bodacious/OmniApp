@@ -1,12 +1,16 @@
 # frozen_string_literal: true
 
-source "https://rubygems.org"
+eval_gemfile "../Gemfile"
 
 # gem "rails"
 
 gem "opal", "~> 1.8"
 gem "rack", "~> 3.1"
-gem "rackup", "~> 2.2"
+# gem "rackup", "~> 2.2"
 
-gem "webrick", "~> 1.9"
-gem 'base64'
+gem "base64"
+# gem "webrick", "~> 1.9"
+gem 'opal-browser'
+gem 'opal-sprockets'
+gem "rake", "~> 13.2"
+gem "puma"
