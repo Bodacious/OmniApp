@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'models/list_item'
+require "models/list_item"
 class ListItemRepository
   def create(**attributes)
     list_item = ListItem.new(**attributes)

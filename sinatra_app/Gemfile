@@ -4,14 +4,11 @@ eval_gemfile "../Gemfile"
 
 # gem "rails"
 
-
-gem "rake", "~> 13.2"
-gem "sinatra"
-gem "rackup"
-gem "rack-unreloader"
 gem "puma"
-gem 'slim'
-gem "sqlite3", "~> 2.5"
+gem "rack-unreloader"
+gem "rackup"
+gem "rake", "~> 13.2"
 gem "sequel"
-
-
+gem "sinatra"
+gem "slim"
+gem "sqlite3", "~> 2.5"

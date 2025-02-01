@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-require 'sqlite3'
-require 'sequel'
-
+require "sqlite3"
 require "sequel"
 
 # connect to an in-memory database
@@ -18,9 +16,8 @@ end
 items = DB[:lists]
 
 # populate the table
-items.insert(name: 'abc')
-items.insert(name: 'def')
-items.insert(name: 'ghi')
-
+items.insert(name: "abc")
+items.insert(name: "def")
+items.insert(name: "ghi")
 
 ITEMS = items

@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 class ListItem
-  attr_accessor :id, :summary, :list_id
+  attr_accessor :id
+  attr_accessor :summary
+  attr_accessor :list_id
 
   def initialize(attributes = {})
     @id = attributes[:id]

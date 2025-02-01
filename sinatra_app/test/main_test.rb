@@ -1,7 +1,7 @@
-require 'test_helper'
-require 'main'
-require 'capybara'
-require 'capybara/dsl'
+require "test_helper"
+require "main"
+require "capybara"
+require "capybara/dsl"
 
 class MainTest < Minitest::Test
   # include Rack::Test::Methods
@@ -12,18 +12,18 @@ class MainTest < Minitest::Test
   end
 
   def test_it_loads_the_landing_page
-    visit '/'
-    assert page.has_content? 'My lists'
+    visit "/"
+    assert page.has_content? "My lists"
   end
 
   def test_user_creates_new_list
-    visit '/'
-    click_on 'New list'
+    visit "/"
+    click_on "New list"
 
     fill_in :list_name, with: "list-name"
     click_on "Save"
 
-    assert page.has_content?('list-name')
+    assert page.has_content?("list-name")
     # visit '/lists', list: { name: "list-name" }
     # assert_predicate last_response, :redirection?
     # assert_equal "text/html", last_response.media_type

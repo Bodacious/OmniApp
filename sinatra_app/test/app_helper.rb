@@ -1,10 +1,10 @@
-require_relative 'test_helper'
-require 'capybara/minitest'
-require 'selenium-webdriver'
-require 'capybara/dsl'
+require_relative "test_helper"
+require "capybara/minitest"
+require "selenium-webdriver"
+require "capybara/dsl"
 
 # Sinatra app setup for Capybara
-require File.expand_path('../../app/main', __FILE__)
+require File.expand_path("../app/main", __dir__)
 
 Capybara.app = Sinatra::Application
 
@@ -15,10 +15,10 @@ end
 # Headless Chrome options
 def headless_chrome_options
   Selenium::WebDriver::Chrome::Options.new.tap do |opts|
-    opts.add_argument('--headless')
-    opts.add_argument('--disable-gpu')
-    opts.add_argument('--no-sandbox')
-    opts.add_argument('--window-size=1280,800')
+    opts.add_argument("--headless")
+    opts.add_argument("--disable-gpu")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--window-size=1280,800")
   end
 end
 

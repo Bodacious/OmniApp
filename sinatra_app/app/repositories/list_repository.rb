@@ -1,5 +1,5 @@
-require_relative 'repository'
-require 'models/list'
+require_relative "repository"
+require "models/list"
 class ListRepository < Repository
   def create(**attributes)
     list = List.new(**attributes)

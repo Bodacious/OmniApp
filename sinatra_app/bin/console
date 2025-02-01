@@ -1,11 +1,10 @@
-#!/usr/bin/env ruby 
+#!/usr/bin/env ruby
 
+$LOAD_PATH << File.expand_path("../app", __dir__)
+$LOAD_PATH << File.expand_path("../../core_app", __dir__)
 
-$LOAD_PATH << File.expand_path('../app', __dir__)
-$LOAD_PATH << File.expand_path('../../core_app', __dir__)
-
-require 'boot'
-require_relative '../config/database'
-require 'irb'
+require "boot"
+require_relative "../config/database"
+require "irb"
 # DATABASE = Database.new
 IRB.start

@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require 'test_helper'
-require 'models/list'
+require "test_helper"
+require "models/list"
 
 class ListTest < Minitest::Test
   def test_it_sets_the_name_on_init
     list = List.new(name: "list-name")
-    assert_equal 'list-name', list.name
+    assert_equal "list-name", list.name
   end
 
   def test_it_sets_the_id_on_init
@@ -27,7 +27,7 @@ class ListTest < Minitest::Test
   def test_list_has_many_items
     list = List.new
 
-    item = stub('Item')
+    item = stub("Item")
     list.items << item
     assert_includes list.items, item
   end
