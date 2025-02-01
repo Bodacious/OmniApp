@@ -1,0 +1,17 @@
+# frozen_string_literal: true
+
+eval_gemfile "../Gemfile"
+
+# gem "rails"
+
+
+gem "rake", "~> 13.2"
+gem "sinatra"
+gem "rackup"
+gem "rack-unreloader"
+gem "puma"
+gem 'slim'
+gem "sqlite3", "~> 2.5"
+gem "sequel"
+
+
