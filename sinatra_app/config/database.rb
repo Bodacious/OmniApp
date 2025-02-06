@@ -1,23 +1,23 @@
 # frozen_string_literal: true
+require 'bundler'
+Bundler.require(:database)
 
-require "sqlite3"
 require "sequel"
+require 'sqlite3'
 
 # connect to an in-memory database
-DB = Sequel.sqlite
+DB = Sequel.sqlite(database: "../databases/#{ENV['RACK_ENV']}.db", logger: Logger.new("../log/#{ENV['RACK_ENV']}.db.log"))
 
+table_creation_method = ENV['RACK_ENV'] == 'development' ? :create_table : :create_table!
 # create an items table
-DB.create_table :lists do
+DB.public_send table_creation_method, :lists do
   primary_key :id
-  String :name, unique: true, null: false
-end
+  String :name, unique: false, null: false
+  String :slug, unique: true, null: false
+end unless ENV['RACK_ENV'] != 'test' && DB.table_exists?(:lists)
 
-# create a dataset from the items table
-items = DB[:lists]
-
-# populate the table
-items.insert(name: "abc")
-items.insert(name: "def")
-items.insert(name: "ghi")
-
-ITEMS = items
+DB.public_send table_creation_method, :list_items do
+  primary_key :id
+  String :summary, null: false
+  foreign_key :list_id, references: :lists, null: false
+end unless ENV['RACK_ENV'] != 'test' && DB.table_exists?(:lists)

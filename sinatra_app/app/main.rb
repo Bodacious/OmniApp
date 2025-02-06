@@ -1,17 +1,14 @@
 require "bundler"
-Bundler.require
+Bundler.require(:default, :app)
 
-$LOAD_PATH << File.expand_path("../../core_app", __dir__)
+$LOAD_PATH << File.dirname(__FILE__)
 
-require "config/database"
+require_relative 'boot'
 
-class App < Sinatra::Base
-  DATABASE = Database.new
-  DATABASE.build_schema
-
+class OmniApp < Sinatra::Base
   configure do
+    set :environment, ENV['RACK_ENV'] || :development
     set :json_encoder, :to_json
-    set :erb, layout: :layout
     set :slim, layout: :layout
     set :server, %w[puma]
     enable :logging
@@ -30,33 +27,44 @@ class App < Sinatra::Base
   end
 
   get "/" do
-    slim :index
+    lists = list_repository.all
+    slim :index, locals: { lists: lists }
   end
 
   post "/lists" do
-    list_data = params[:list]
-    list = ListRepository.new(DATABASE).create(**list_data)
-    if list.persisted?
-      redirect to("/lists/#{list.id}")
+    list = List.new(**params[:list])
+    list_repo = list_repository
+    if list_repo.save(list)
+      redirect to("/lists/#{list.slug}")
       status 301
     else
       status 422
     end
   end
 
-  get "/lists/:id" do
-    list = ListRepository.new(DATABASE).find(params[:id])
-    slim :"lists/show", locals: { list: list }
+  get "/lists/:slug" do
+    list = list_repository.find_by_slug(params[:slug])
+    list_items = list_item_repository.all_for_list(list)
+    slim :"lists/show", locals: { list: list, list_items: list_items }
   end
 
-  post "/lists/:list_id/items" do
-    list_item_attributes = params["item"].merge(list_id: params["list_id"])
-    item = ListItemRepository.new.create(**list_item_attributes)
-    if item.persisted?
-      headers({ "Location" => "https://localhost:3000/lists/#{item.list_id}" })
+  post "/lists/:list_slug/items" do
+    list_item = ListItem.new(**params[:list_item])
+    if list_item_repository.save_list_item_to_list(list_slug: params[:list_slug], list_item: list_item)
+      redirect to("/lists/#{params[:list_slug]}")
       status 301
     else
       status 422
     end
+  end
+
+  private
+
+  def list_repository
+    @list_repository ||= ListRepository.new(DB)
+  end
+
+  def list_item_repository
+    @list_item_repository ||= ListItemRepository.new(DB)
   end
 end

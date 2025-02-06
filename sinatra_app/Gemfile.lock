@@ -15,10 +15,16 @@ GEM
       rack-test (>= 0.6.3)
       regexp_parser (>= 1.5, < 3.0)
       xpath (~> 3.2)
+    childprocess (5.1.0)
+      logger (~> 1.5)
     difftastic (0.4.0)
     difftastic (0.4.0-x86_64-darwin)
     json (2.9.1)
     language_server-protocol (3.17.0.3)
+    launchy (3.1.0)
+      addressable (~> 2.8)
+      childprocess (~> 5.0)
+      logger (~> 1.6)
     logger (1.6.5)
     matrix (0.4.2)
     mini_mime (1.1.5)
@@ -87,7 +93,7 @@ GEM
       rexml (~> 3.2, >= 3.2.5)
       rubyzip (>= 1.2.2, < 3.0)
       websocket (~> 1.0)
-    sequel (5.88.0)
+    sequel (5.89.0)
       bigdecimal
     sinatra (4.1.1)
       logger (>= 1.6.0)
@@ -117,21 +123,24 @@ PLATFORMS
 
 DEPENDENCIES
   capybara (~> 3.40)
+  difftastic
+  launchy (~> 3.1)
   minitest (~> 5.25)
   minitest-difftastic (~> 0.1)
   mocha (~> 2.7)
   mutex_m (~> 0.3)
+  nio4r (~> 2.7)
   pessimize (~> 0.5)
-  puma
+  puma (~> 6.5)
   rack-test (~> 2.2)
-  rack-unreloader
-  rackup
+  rack-unreloader (~> 2.1)
+  rackup (~> 2.2)
   rake (~> 13.2)
   rubocop (~> 1.70)
   selenium-webdriver (~> 4.28)
-  sequel
-  sinatra
-  slim
+  sequel (~> 5.89)
+  sinatra (~> 4.1)
+  slim (~> 5.2)
   sqlite3 (~> 2.5)
 
 RUBY VERSION

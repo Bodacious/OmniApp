@@ -31,4 +31,10 @@ class ListTest < Minitest::Test
     list.items << item
     assert_includes list.items, item
   end
+
+  def test_list_slug_is_the_name_dasherized
+    list = List.new(name: "My 100% Awesome list?")
+
+    assert_equal('my-100-awesome-list', list.slug)
+  end
 end

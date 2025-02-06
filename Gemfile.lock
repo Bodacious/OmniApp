@@ -83,6 +83,7 @@ PLATFORMS
 
 DEPENDENCIES
   capybara (~> 3.40)
+  difftastic
   minitest (~> 5.25)
   minitest-difftastic (~> 0.1)
   mocha (~> 2.7)

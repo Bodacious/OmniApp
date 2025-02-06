@@ -1,2 +1,5 @@
 .idea
 *.backup
+*.log
+*.db
+tmp

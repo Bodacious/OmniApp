@@ -1,3 +1,4 @@
+h1 My lists
 a href="#" New list
 
 form action="/lists" method="post"
@@ -5,3 +6,8 @@ form action="/lists" method="post"
     input type="text" name="list[name]"
 
   input type="submit" value="Save"
+
+
+- lists.each do |list|
+  .list
+    a href="/lists/#{list.slug}" = list.name

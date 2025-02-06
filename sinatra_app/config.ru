@@ -1,3 +1,3 @@
 require "./app/main"
 
-run App
+run OmniApp

@@ -1,16 +1,27 @@
 require_relative "repository"
 require "models/list"
+
 class ListRepository < Repository
-  def create(**attributes)
-    list = List.new(**attributes)
-    list.id = 1
+  def save(list)
+    if list.persisted?
+      insert(**list.attributes)
+    else
+      list.id = insert(**list.attributes)
+    end
     list
   end
 
   def find(id)
-    list = List.new(**{})
-    list.id = id
-    list.name = "list-name"
-    list
+    result = data_source.select(:id, :name, :slug).where(id: id).first
+    List.new(**result.to_h)
+  end
+
+  def find_by_slug(slug)
+    result = data_source.select(:id, :name, :slug).where(slug: slug).first
+    List.new(**result.to_h)
+  end
+
+  def all
+    data_source.all.map { List.new(**_1) }
   end
 end

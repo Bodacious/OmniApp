@@ -1,1 +1,11 @@
-div #{list.name}
+h1 #{list.name}
+
+a href='#' Add item
+
+form action="/lists/#{list.slug}/items" method="post"
+  label for="list_item[summary]"
+    input name="list_item[summary]" type="text"
+  input type="submit" value="Save"
+
+- list_items.each do |list_item|
+  .list_item = list_item.summary
