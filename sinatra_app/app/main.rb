@@ -4,6 +4,8 @@ Bundler.require(:default, :app)
 $LOAD_PATH << File.dirname(__FILE__)
 
 require_relative 'boot'
+LOGGER_PATH = File.expand_path("../../../log/application.#{ENV['RACK_ENV']}.log", __FILE__)
+APP_LOGGER = Logger.new(LOGGER_PATH)
 
 class OmniApp < Sinatra::Base
   configure do
@@ -12,6 +14,10 @@ class OmniApp < Sinatra::Base
     set :slim, layout: :layout
     set :server, %w[puma]
     enable :logging
+  end
+
+  configure :development do
+    register Sinatra::Reloader
   end
 
   before do
@@ -48,6 +54,12 @@ class OmniApp < Sinatra::Base
     slim :"lists/show", locals: { list: list, list_items: list_items }
   end
 
+  delete "/lists/:slug" do
+    list_repository.delete_by_slug(params[:slug])
+    redirect to("/")
+    status 301
+  end
+
   post "/lists/:list_slug/items" do
     list_item = ListItem.new(**params[:list_item])
     if list_item_repository.save_list_item_to_list(list_slug: params[:list_slug], list_item: list_item)
@@ -55,6 +67,15 @@ class OmniApp < Sinatra::Base
       status 301
     else
       status 422
+    end
+  end
+
+  delete '/lists/:list_slug/items/:id' do
+    if list_item_repository.delete_list_item(list_slug: params[:list_slug], id: params[:id])
+      redirect to("/lists/#{params[:list_slug]}")
+      status 301
+    else
+      status 404
     end
   end
 

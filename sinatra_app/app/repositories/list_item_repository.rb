@@ -24,4 +24,11 @@ class ListItemRepository < Repository
     list_item.id = id
     list_item
   end
+
+  def delete_list_item(list_slug:, id:)
+    # TODO: Filter this by list_slug
+    data_source.where(id: id).delete
+  rescue Sequel
+    return false
+  end
 end

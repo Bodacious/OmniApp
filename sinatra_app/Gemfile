@@ -21,3 +21,5 @@ group :test do
   gem "launchy", "~> 3.1"
 end
 gem "nio4r", "~> 2.7"
+
+gem "sinatra-reloader", "~> 1.0", require: "sinatra/reloader"

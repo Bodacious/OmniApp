@@ -8,4 +8,14 @@ form action="/lists/#{list.slug}/items" method="post"
   input type="submit" value="Save"
 
 - list_items.each do |list_item|
-  .list_item = list_item.summary
+  .list_item
+    .list_item__summary
+        = list_item.summary
+
+    form.list_item__control action="/lists/#{list.slug}/items/#{list_item.id}" method="POST"
+      input type="hidden" name="_method" value="DELETE"
+      input.list_item__control type="submit" value="Remove"
+
+form action="/lists/#{list.slug}" method="POST"
+  input type="hidden" name="_method" value="DELETE"
+  input type="submit" value="Delete list"

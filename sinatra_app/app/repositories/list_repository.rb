@@ -21,6 +21,10 @@ class ListRepository < Repository
     List.new(**result.to_h)
   end
 
+  def delete_by_slug(slug)
+    data_source.where(slug: slug).delete
+  end
+
   def all
     data_source.all.map { List.new(**_1) }
   end
