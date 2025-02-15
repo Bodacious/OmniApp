@@ -6,7 +6,12 @@ require "capybara/dsl"
 # Sinatra app setup for Capybara
 require File.expand_path("../app/main", __dir__)
 
-Capybara.app = OmniApp
+Capybara.app = Rack::Builder.app do |app|
+  use Rack::CommonLogger
+  use Rack::MethodOverride
+  run OmniApp
+end
+
 Capybara.server = :puma, { Silent: true } # Ensures Puma is used for tests
 
 Capybara.register_driver :selenium_chrome_headless do |app|
@@ -33,4 +38,8 @@ Capybara.server_port = 4567
 
 Capybara.app_host = "http://127.0.0.1:#{Capybara.server_port}"
 
-puts "Capybara test server running at: http://127.0.0.1:#{Capybara.server_port}"
+# Selenium::WebDriver.logger.level = :debug
+# Selenium::WebDriver.logger.output = '../log/selenium.log'
+
+require 'support/database_truncation'
+Minitest::Test.include(DatabaseTruncation)
