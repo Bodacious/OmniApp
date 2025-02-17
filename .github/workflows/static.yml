@@ -5,8 +5,8 @@ on:
     branches: [main]
 
 jobs:
-  needs: test
   build-deploy-docs:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: write
