@@ -4,7 +4,13 @@ source "https://rubygems.org"
 
 ruby file: "./.ruby-version"
 
-gem "rackup", "~> 2.2"
 gem "rake", "~> 13.2"
-gem "minitest", "~> 5.25"
-gem 'rubocop', group: 'development', require: false
+
+group :development do
+  gem 'rubocop'
+end
+
+group :test do
+  gem "minitest", "~> 5.25"
+  gem "mutex_m", "~> 0.3.0"
+end
