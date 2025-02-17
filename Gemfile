@@ -15,3 +15,8 @@ group :test do
   gem "mutex_m", "~> 0.3.0"
   gem "simplecov"
 end
+
+group :ci do
+  gem "rdoc", "~> 6.12"
+  gem "rubycritic"
+end
