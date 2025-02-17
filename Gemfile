@@ -13,4 +13,5 @@ end
 group :test do
   gem "minitest", "~> 5.25"
   gem "mutex_m", "~> 0.3.0"
+  gem "simplecov"
 end
