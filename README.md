@@ -4,4 +4,5 @@
 
 Demonstrating layered architecture.
 
-WIP
+Links:
+- [Code Quality](./rubycritic/overview.html)
