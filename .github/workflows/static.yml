@@ -7,6 +7,8 @@ on:
 jobs:
   build-deploy-docs:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Check out
         uses: actions/checkout@v3
