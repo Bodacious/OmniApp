@@ -13,10 +13,10 @@ end
 group :test do
   gem "minitest", "~> 5.25"
   gem "mutex_m", "~> 0.3.0"
-  gem "simplecov"
+  gem "simplecov", require: false
 end
 
 group :ci do
-  gem "rdoc", "~> 6.12"
-  gem "rubycritic"
+  gem "rdoc", "~> 6.12", require: false
+  gem "rubycritic", require: false
 end

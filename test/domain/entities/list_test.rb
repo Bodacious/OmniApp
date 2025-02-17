@@ -1,8 +1,3 @@
-require 'bundler/setup'
-Bundler.setup(:test)
-
-require 'minitest/autorun'
-
 require 'domain/entities/list'
 
 class ListTest < Minitest::Test

@@ -5,4 +5,6 @@
 Demonstrating layered architecture.
 
 Links:
+
 - [Code Quality](./rubycritic/overview.html)
+- [Test Coverage](./coverage/index.html)
