@@ -1,0 +1,1 @@
+var search_data = {"index":{"searchIndex":["list","new()","readme"],"longSearchIndex":["list","list::new()",""],"info":[["List","","List.html","",""],["new","List","List.html#method-c-new","(**attributes)",""],["README","","README_md.html","","<p>OmniApp\n<p><img src=\"https://github.com/Bodacious/OmniApp/actions/workflows/ruby.yml/badge.svg\">\n<p>Demonstrating …\n"]]}}
