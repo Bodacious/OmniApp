@@ -42,13 +42,11 @@ jobs:
       - name: Build Docs
         run: bundle exec rake build_docs
 
-      - name: Download coverage docs
-        uses: actions/download-artifact@v4
+      - name: Restore test coverage from cache
+        uses: actions/cache@v4
         with:
-          name: test-coverage
-          path: ./doc/coverage
-          github-token: ${{ secrets.GH_PAT }}
-          merge-multiple: false
+          path: doc/coverage
+          key: test-coverage-${{ github.run_id }}
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
