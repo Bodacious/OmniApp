@@ -7,7 +7,9 @@ ruby file: "./.ruby-version"
 gem "rake", "~> 13.2"
 
 group :development do
-  gem 'rubocop'
+  gem "rubocop"
+  gem "rubocop-minitest", "~> 0.37.1"
+  gem "rubocop-rake", "~> 0.7.1"
 end
 
 group :test do
@@ -20,3 +22,4 @@ group :ci do
   gem "rdoc", "~> 6.12", require: false
   gem "rubycritic", require: false
 end
+

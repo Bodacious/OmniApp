@@ -1,0 +1,14 @@
+inherit_from:
+  - https://raw.githubusercontent.com/Bodacious/style-guides/main/.rubocop.yml
+
+plugins:
+  - rubocop-minitest
+  - rubocop-rake
+
+Metrics/BlockLength:
+  Exclude:
+    - spec/**/*_spec.rb
+
+Layout/LineLength:
+  Max: 90
+  AllowURI: true

@@ -1,0 +1,41 @@
+AllCops:
+  NewCops: enable
+  Exclude:
+    - bin/*
+    - Gemfile.lock
+    
+Layout/LineLength:
+  Max: 80
+  Exclude:
+    - config/environments/*.rb
+    - config/puma.rb
+    - Gemfile
+    - db/schema.rb
+    - spec/spec_helper.rb
+    - spec/rails_helper.rb
+    - spec/**/*_spec.rb
+    
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*_spec.rb'
+    - '*/schema.rb'
+
+Style/AccessorGrouping:
+  Enabled: true
+  EnforcedStyle: separated
+
+Style/Documentation:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Style/NumericLiterals:
+  Exclude:
+    - db/schema.rb
+    
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+  SupportedStyles:
+    - single_quotes
+    - double_quotes

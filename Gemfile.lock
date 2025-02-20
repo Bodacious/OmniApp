@@ -103,6 +103,13 @@ GEM
       unicode-display_width (>= 2.4.0, < 4.0)
     rubocop-ast (1.38.0)
       parser (>= 3.3.1.0)
+    rubocop-minitest (0.37.1)
+      lint_roller (~> 1.1)
+      rubocop (>= 1.72.1, < 2.0)
+      rubocop-ast (>= 1.38.0, < 2.0)
+    rubocop-rake (0.7.1)
+      lint_roller (~> 1.1)
+      rubocop (>= 1.72.1)
     ruby-progressbar (1.13.0)
     ruby_parser (3.21.1)
       racc (~> 1.5)
@@ -148,6 +155,8 @@ DEPENDENCIES
   rake (~> 13.2)
   rdoc (~> 6.12)
   rubocop
+  rubocop-minitest (~> 0.37.1)
+  rubocop-rake (~> 0.7.1)
   rubycritic
   simplecov
 

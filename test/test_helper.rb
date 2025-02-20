@@ -1,9 +1,9 @@
-require 'bundler/setup'
+require "bundler/setup"
 Bundler.setup(:test)
 
-require 'minitest/autorun'
+require "minitest/autorun"
 
-require 'simplecov'
+require "simplecov"
 SimpleCov.start do
-  coverage_dir 'doc/coverage'
+  coverage_dir "doc/coverage"
 end
