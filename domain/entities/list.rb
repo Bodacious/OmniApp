@@ -1,3 +1,5 @@
+##
+# A List is a single place to store a group of related tasks or reminders
 class List
   attr_reader :name
 
