@@ -34,8 +34,9 @@ jobs:
         bundler-cache: true # runs 'bundle install' and caches installed gems automatically
     - name: Run tests
       run: bundle exec rake
-    - name: Cache test coverage
-      uses: actions/cache@v4
+    - name: Upload test coverage artifact
+      uses: actions/upload-artifact@v4
       with:
+        name: test-coverage
         path: doc/coverage
-        key: test-coverage-${{ github.run_id }}
+        retention-days: 1
