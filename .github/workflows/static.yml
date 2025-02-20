@@ -40,6 +40,12 @@ jobs:
       - name: Build Docs
         run: bundle exec rake build_docs
 
+      - name: Download coverage docs
+        uses: actions/download-artifact@v4
+        with:
+          path: doc/coverage
+          merge-multiple: true
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
