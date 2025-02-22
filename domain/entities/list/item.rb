@@ -17,14 +17,22 @@ class List
       @repeatable = attributes.fetch(:repeatable, false)
     end
 
+    # Has this item been marked as done?
+    # @return [Boolean]
     def done? = @done
 
+    # Should this item be added to the list when refreshed?
+    # @return [Boolean]
     def repeatable? = @repeatable
 
+    # Toggle the value of +done?+
+    # @return [Boolean]
     def toggle_done
       self.done = !done?
     end
 
+    # Toggle the value of +repeatable?+
+    # @return [Boolean]
     def toggle_repeatable
       self.repeatable = !repeatable?
     end
