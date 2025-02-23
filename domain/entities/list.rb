@@ -11,7 +11,7 @@ class List
     attr_reader :set
 
     def_delegator :set, :delete, :remove
-    def_delegators :set, :add, :include?, :empty?, :select
+    def_delegators :set, :add, :include?, :empty?, :select, :clear
 
     def initialize
       @set = Set.new
@@ -50,6 +50,8 @@ class List
     new_items = ListItemSet.new
     pending_items.each { |item| new_items.add(item) }
     repeatable_items.each { |item| new_items.add(item.dup) }
+    old_items = self.items
+    old_items.clear
     self.items = new_items
   end
 
