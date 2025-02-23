@@ -1,22 +1,12 @@
 # frozen_string_literal: true
 
 require "forwardable"
+require_relative 'list/item_set'
 require_relative "list/item"
 ##
 # A List is a single place to store a group of related tasks or reminders
 class List
   # Stores all of the items in a given List
-  class ListItemSet
-    extend Forwardable
-    attr_reader :set
-
-    def_delegator :set, :delete, :remove
-    def_delegators :set, :add, :include?, :empty?, :select, :clear
-
-    def initialize
-      @set = Set.new
-    end
-  end
 
   ##
   # Name of the list
@@ -31,7 +21,7 @@ class List
 
   def initialize(**attributes)
     @name = attributes[:name]
-    @items = ListItemSet.new
+    @items = List::ItemSet.new
   end
 
   # Add an item to this list
@@ -47,7 +37,7 @@ class List
   end
 
   def refresh
-    new_items = ListItemSet.new
+    new_items = List::ItemSet.new
     pending_items.each { |item| new_items.add(item) }
     repeatable_items.each { |item| new_items.add(item.dup) }
     old_items = self.items
