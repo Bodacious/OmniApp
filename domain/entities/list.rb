@@ -6,7 +6,9 @@ require_relative "list/item"
 ##
 # A List is a single place to store a group of related tasks or reminders
 class List
-  # Stores all of the items in a given List
+  extend Forwardable
+
+  def_delegators :items, :pending_items, :repeatable_items
 
   ##
   # Name of the list
@@ -37,21 +39,6 @@ class List
   end
 
   def refresh
-    new_items = List::ItemSet.new
-    pending_items.each { |item| new_items.add(item) }
-    repeatable_items.each { |item| new_items.add(item.dup) }
-    old_items = self.items
-    old_items.clear
-    self.items = new_items
-  end
-
-  def pending_items
-    items.select(&:pending?)
-  end
-
-  private
-
-  def repeatable_items
-    items.select(&:repeatable?)
+    self.items = items.refresh
   end
 end
