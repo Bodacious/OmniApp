@@ -22,3 +22,5 @@ group :ci do
   gem "rdoc", "~> 6.12", require: false
   gem "rubycritic", require: false
 end
+
+gem "mocha", "~> 2.7"

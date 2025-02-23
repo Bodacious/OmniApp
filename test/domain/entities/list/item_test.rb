@@ -31,14 +31,17 @@ class List
 
     def test_list_items_can_be_repeatable
       list_item = List::Item.new repeatable: true
+
       assert_predicate list_item, :repeatable?
 
       list_item = List::Item.new repeatable: false
+
       refute_predicate list_item, :repeatable?
     end
 
     def test_toggle_repeatable_changes_the_repeatable_value
       list_item = List::Item.new
+
       refute_predicate list_item, :repeatable?
 
       list_item.toggle_repeatable
