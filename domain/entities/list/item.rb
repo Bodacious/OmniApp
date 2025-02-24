@@ -36,5 +36,18 @@ class List
     def toggle_repeatable
       self.repeatable = !repeatable?
     end
+
+    def undo
+      toggle_done if done?
+      done?
+    end
+    def refresh
+      if repeatable?
+        new_instance.undo
+        new_instance
+      else
+        self
+      end
+    end
   end
 end

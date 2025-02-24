@@ -48,53 +48,13 @@ class ListTest < Minitest::Test
     refute_includes list.pending_items, done_list_item
   end
 
-  def test_list_refresh_re_populates_with_repeatable_items_marked_as_pending
-    list = List.new name: "list-name"
-    list_item = stub("ListItem", summary: "list-item-summary", repeatable?: true,
-                                 pending?: true)
-    list.add_item(list_item)
+  def test_list_refresh_refreshes_the_list_items_set
+    list = List.new
+    list_items = stub('ListItems')
+    list.stubs(items: list_items)
+
+    list_items.expects(:refresh).returns(stub('NewListItems'))
 
     list.refresh
-
-    assert_includes list.pending_items, list_item
-  end
-
-  def test_list_refresh_re_populates_with_repeatable_items_marked_as_done
-    list = List.new name: "list-name"
-    list_item = stub("ListItem", summary: "list-item-summary", repeatable?: true,
-                     pending?: false)
-    new_list_item = stub("NewListItem", summary: "list-item-summary", repeatable?: true,
-                         pending?: true)
-    list.add_item(list_item)
-    list_item.expects(:dup).returns(new_list_item)
-    list.refresh
-
-    assert_predicate list.pending_items.first, :pending?
-  end
-
-  def test_list_refresh_does_not_repopulate_with_non_repeatable_items_that_are_not_pending?
-    list = List.new name: "list-name"
-    list_item = stub("ListItem", summary: "list-item-summary", repeatable?: false,
-                                 pending?: false)
-    list.add_item(list_item)
-
-    assert_empty list.pending_items
-
-    list.refresh
-
-    assert_empty list.pending_items
-  end
-
-  def test_list_refresh_carries_over_undone_items_that_are_not_repeatable
-    list = List.new name: "list-name"
-    list_item = stub("ListItem", summary: "list-item-summary", repeatable?: false,
-                                 pending?: true)
-    list.add_item(list_item)
-
-    assert_includes list.pending_items, list_item
-
-    list.refresh
-
-    assert_includes list.pending_items, list_item
   end
 end

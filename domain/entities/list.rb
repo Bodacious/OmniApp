@@ -18,12 +18,11 @@ class List
   ##
   # List of items in this List
   # @return [ListItemSet]
-  attr_accessor :items
-  private :items=
+  attr_reader :items
 
   def initialize(**attributes)
-    @name = attributes[:name]
-    @items = List::ItemSet.new
+    self.name = attributes[:name]
+    self.items = List::ItemSet.new
   end
 
   # Add an item to this list
@@ -40,5 +39,15 @@ class List
 
   def refresh
     self.items = items.refresh
+  end
+
+  private
+
+  def items=(value)
+    @items = value
+  end
+
+  def name=(value)
+    @name = value
   end
 end

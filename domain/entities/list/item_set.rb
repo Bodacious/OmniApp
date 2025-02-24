@@ -11,10 +11,9 @@ class List
 
     def refresh
       new_set = self.class.new
-      new_set.merge(pending_items)
-      new_set.merge(repeatable_items.map(&:dup))
+      new_set.merge((pending_items | repeatable_items).map(&:refresh))
 
-      clear
+      clear # help in memory cleanup
       new_set
     end
 
