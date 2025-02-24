@@ -1,7 +1,9 @@
 ---
 encoding: UTF-8
 static_path: []
-rdoc_include: [domains/**/*]
+rdoc_include:
+- domains/**/*
+page_dir:
 apply_default_exclude: true
 autolink_excluded_words: []
 charset: UTF-8

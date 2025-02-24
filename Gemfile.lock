@@ -92,6 +92,7 @@ GEM
       rexml (~> 3.1)
     regexp_parser (2.10.0)
     rexml (3.4.1)
+    rorvswild_theme_rdoc (0.2)
     rubocop (1.72.1)
       json (~> 2.3)
       language_server-protocol (~> 3.17.0.2)
@@ -158,6 +159,7 @@ DEPENDENCIES
   mutex_m (~> 0.3.0)
   rake (~> 13.2)
   rdoc (~> 6.12)
+  rorvswild_theme_rdoc (~> 0.2)
   rubocop
   rubocop-minitest (~> 0.37.1)
   rubocop-rake (~> 0.7.1)

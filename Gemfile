@@ -24,3 +24,5 @@ group :ci do
 end
 
 gem "mocha", "~> 2.7"
+
+gem "rorvswild_theme_rdoc", "~> 0.2"
