@@ -2,6 +2,8 @@ require "bundler"
 Bundler.require(:ci, :test)
 
 require "minitest/test_task"
+require 'rdoc'
+require 'rorvswild_theme_rdoc'
 
 Minitest::TestTask.create
 
@@ -30,6 +32,7 @@ end
 
 require "rdoc/task"
 RDoc::Task.new do |rdoc|
+  rdoc.options << '--template=rorvswild'
   rdoc.main = "README.md"
   rdoc.rdoc_files.include("README.md", "domain/**/*.rb")
   rdoc.rdoc_dir = "doc"

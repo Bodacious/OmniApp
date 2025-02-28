@@ -14,15 +14,16 @@ end
 
 group :test do
   gem "minitest", "~> 5.25"
-  gem "mutex_m", "~> 0.3.0"
   gem "simplecov", require: false
+  gem "mocha", "~> 2.7"
 end
 
 group :ci do
   gem "rdoc", "~> 6.12", require: false
   gem "rubycritic", require: false
+  gem "rorvswild_theme_rdoc", "~> 0.2", require: false
 end
 
-gem "mocha", "~> 2.7"
 
-gem "rorvswild_theme_rdoc", "~> 0.2"
+
+
