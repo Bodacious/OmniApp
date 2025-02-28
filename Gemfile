@@ -16,6 +16,7 @@ group :test do
   gem "minitest", "~> 5.25"
   gem "simplecov", require: false
   gem "mocha", "~> 2.7"
+  gem 'mutex_m'
 end
 
 group :ci do

@@ -48,5 +48,11 @@ class List
 
       assert_predicate list_item, :repeatable?
     end
+
+    def test_refresh_when_repeatable_creates_new_instance
+      list_item = List::Item.new repeatable: true
+
+      refute_operator list_item.refresh, :===, list_item
+    end
   end
 end

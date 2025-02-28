@@ -69,6 +69,7 @@ GEM
     minitest (5.25.4)
     mocha (2.7.1)
       ruby2_keywords (>= 0.0.5)
+    mutex_m (0.3.0)
     parallel (1.26.3)
     parser (3.3.7.1)
       ast (~> 2.4.1)
@@ -155,6 +156,7 @@ PLATFORMS
 DEPENDENCIES
   minitest (~> 5.25)
   mocha (~> 2.7)
+  mutex_m
   rake (~> 13.2)
   rdoc (~> 6.12)
   rorvswild_theme_rdoc (~> 0.2)
@@ -165,7 +167,7 @@ DEPENDENCIES
   simplecov
 
 RUBY VERSION
-   ruby 3.4.1p0
+   ruby 3.4.2p28
 
 BUNDLED WITH
    2.6.3

@@ -41,6 +41,11 @@ class List
       toggle_done if done?
       done?
     end
+
+    def new_instance
+      dup
+    end
+
     def refresh
       if repeatable?
         new_instance.undo
