@@ -58,7 +58,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ['3.4.2']
+          ruby-version: '3.4.2'
 
       - name: Install Bundler
         run: gem install bundler
