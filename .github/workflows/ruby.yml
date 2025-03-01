@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ruby-version: ['3.4.2']
+        ruby-version: [ '3.4.2' ]
 
     steps:
       - uses: actions/checkout@v4
@@ -24,14 +24,6 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true # Runs 'bundle install' and caches installed gems automatically
-
-      - name: Restore test coverage cache
-        uses: actions/cache@v4
-        with:
-          path: doc/coverage
-          key: test-coverage-${{ github.run_id }}
-          restore-keys: |
-            test-coverage-
 
       - name: Run tests
         run: bundle exec rake
@@ -46,9 +38,9 @@ jobs:
 
   build-docs:
     runs-on: ubuntu-latest
+    needs: test  # ✅ Ensure `test` completes first
     permissions:
       contents: write
-
     steps:
       - uses: actions/checkout@v4
 
@@ -81,6 +73,30 @@ jobs:
 
       - name: Build Docs
         run: bundle exec rake build_docs
+
+      - name: Cache generated documentation
+        uses: actions/cache@v4
+        with:
+          path: doc
+          key: build-docs-${{ github.run_id }}
+          restore-keys: |
+            build-docs-
+
+  deploy_pages:
+    runs-on: ubuntu-latest
+    needs: build-docs  # ✅ Ensure `build-docs` completes first
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore documentation cache
+        uses: actions/cache@v4
+        with:
+          path: doc
+          key: build-docs-${{ github.run_id }}
+          restore-keys: |
+            build-docs-
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
