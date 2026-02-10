@@ -1,13 +1,13 @@
 # frozen_string_literal: true
-require 'bundler'
-Bundler.require(:database)
 require 'logger'
 require "sequel"
 require 'sqlite3'
 
 # connect to an in-memory database
-DB = Sequel.sqlite(database: "../databases/#{ENV['RACK_ENV']}.db",
-                   logger: ::Logger.new("../log/#{ENV['RACK_ENV']}.db.log"))
+logger_path = File.expand_path("../../../log/#{ENV['RACK_ENV']}.db.log", __FILE__)
+database_path = File.expand_path("../../../databases/#{ENV['RACK_ENV']}.db", __FILE__)
+DB = Sequel.sqlite(database: database_path,
+                   logger: ::Logger.new(logger_path))
 
 table_creation_method = ENV['RACK_ENV'] == 'development' ? :create_table : :create_table!
 # create an items table
