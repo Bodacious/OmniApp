@@ -1,4 +1,7 @@
 class List
+  require_relative "../lib/core_extensions/hash"
+  require_relative "../lib/core_extensions/string"
+
   using CoreExtensions::Hash::SymbolizeKeys
   using CoreExtensions::String::Transformations
 

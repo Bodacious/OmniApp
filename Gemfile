@@ -11,6 +11,7 @@ group :test do
   gem "minitest-difftastic", "~> 0.1"
   gem "mocha", "~> 2.7"
   gem "mutex_m", "~> 0.3"
+  gem 'rake'
   gem "rack-test", "~> 2.2"
   gem "selenium-webdriver", "~> 4.28"
 end
