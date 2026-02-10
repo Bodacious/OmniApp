@@ -21,4 +21,12 @@ class ListItem
   def summary
     attributes[:summary]
   end
+
+  def list_id=(value)
+    attributes[:list_id] = value
+  end
+
+  def list_id
+    attributes[:list_id]
+  end
 end

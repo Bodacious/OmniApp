@@ -5,6 +5,7 @@ class List
   attr_reader :attributes
 
   def initialize(**attributes)
+    @items = []
     @attributes = attributes.symbolize_keys
     self.attributes[:slug] ||= self.attributes[:name].to_s.dasherize
   end
@@ -31,5 +32,9 @@ class List
 
   def slug
     attributes[:slug]
+  end
+
+  def items
+    @items
   end
 end
