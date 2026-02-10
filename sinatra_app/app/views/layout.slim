@@ -1,8 +1,320 @@
 html
   head
     script src="/lists.js"
+
+    css:
+        /* app.css */
+
+        /* ========== Base ========== */
+        :root {
+            --c-bg: #f5f7fb;
+            --c-surface: #ffffff;
+            --c-text: #0f172a;
+            --c-muted: #64748b;
+            --c-border: #e2e8f0;
+
+            --c-primary: #2563eb;
+            --c-primary-hover: #1d4ed8;
+
+            --c-danger: #ef4444;
+            --c-danger-hover: #dc2626;
+
+            --c-focus: rgba(37, 99, 235, 0.28);
+
+            --r-sm: 10px;
+            --r-md: 14px;
+
+            --s-1: 6px;
+            --s-2: 10px;
+            --s-3: 14px;
+            --s-4: 18px;
+            --s-5: 24px;
+            --s-6: 32px;
+
+            --shadow-1: 0 10px 30px rgba(15, 23, 42, 0.08);
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            background: var(--c-bg);
+            color: var(--c-text);
+            font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+            "Segoe UI Emoji";
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        :focus-visible {
+            outline: 3px solid var(--c-focus);
+            outline-offset: 2px;
+        }
+
+        /* ========== App Shell ========== */
+        .app {
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app__header {
+            background: var(--c-surface);
+            border-bottom: 1px solid var(--c-border);
+        }
+
+        .app__header-inner {
+            max-width: 920px;
+            margin: 0 auto;
+            padding: var(--s-4) var(--s-4);
+            display: flex;
+            align-items: center;
+            gap: var(--s-3);
+            justify-content: space-between;
+        }
+
+        .app__brand {
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            font-size: 18px;
+            color: var(--c-text);
+        }
+
+        .app__nav {
+            display: flex;
+            align-items: center;
+            gap: var(--s-2);
+        }
+
+        .app__main {
+            flex: 1;
+        }
+
+        .app__container {
+            max-width: 920px;
+            margin: 0 auto;
+            padding: var(--s-5) var(--s-4);
+        }
+
+        .app__footer {
+            padding: var(--s-4) var(--s-4);
+            color: var(--c-muted);
+            text-align: center;
+        }
+
+        /* ========== Page ========== */
+        .page__header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: var(--s-4);
+            margin-bottom: var(--s-4);
+        }
+
+        .page__title {
+            margin: 0;
+            font-size: 28px;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
+        }
+
+        .page__subtitle {
+            margin: var(--s-1) 0 0 0;
+            color: var(--c-muted);
+            font-size: 14px;
+        }
+
+        /* ========== Controls ========== */
+        .btn {
+            appearance: none;
+            border: 1px solid transparent;
+            background: var(--c-primary);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: var(--r-sm);
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform 0.05s ease, background 0.15s ease, border-color 0.15s ease;
+        }
+
+        .btn:hover {
+            background: var(--c-primary-hover);
+            text-decoration: none;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn--ghost {
+            background: transparent;
+            border-color: var(--c-border);
+            color: var(--c-text);
+        }
+
+        .btn--ghost:hover {
+            background: rgba(15, 23, 42, 0.04);
+            text-decoration: none;
+        }
+
+        .btn--danger {
+            background: var(--c-danger);
+        }
+
+        .btn--danger:hover {
+            background: var(--c-danger-hover);
+        }
+
+        .btn--small {
+            padding: 8px 10px;
+            font-size: 14px;
+            border-radius: 9px;
+        }
+
+        /* ========== Forms ========== */
+        .todo-form {
+            background: var(--c-surface);
+            border: 1px solid var(--c-border);
+            border-radius: var(--r-md);
+            box-shadow: var(--shadow-1);
+            padding: var(--s-4);
+            margin-bottom: var(--s-5);
+        }
+
+        .todo-form__row {
+            display: flex;
+            gap: var(--s-3);
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .todo-form__field {
+            flex: 1 1 340px;
+            min-width: 240px;
+        }
+
+        .todo-form__label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--c-muted);
+            margin-bottom: var(--s-1);
+        }
+
+        .todo-form__input {
+            width: 100%;
+            border: 1px solid var(--c-border);
+            background: #fff;
+            border-radius: var(--r-sm);
+            padding: 11px 12px;
+            font-size: 16px;
+        }
+
+        .todo-form__input::placeholder {
+            color: rgba(100, 116, 139, 0.7);
+        }
+
+        .todo-form__actions {
+            display: flex;
+            gap: var(--s-2);
+            align-items: center;
+        }
+
+        /* ========== Lists ========== */
+        .list-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: var(--s-4);
+        }
+
+        .list-card {
+            background: var(--c-surface);
+            border: 1px solid var(--c-border);
+            border-radius: var(--r-md);
+            box-shadow: var(--shadow-1);
+            padding: var(--s-4);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--s-3);
+        }
+
+        .list-card__link {
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .list-card__meta {
+            color: var(--c-muted);
+            font-size: 13px;
+        }
+
+        /* ========== Items ========== */
+        .todo-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--s-3);
+        }
+
+        .todo-item {
+            background: var(--c-surface);
+            border: 1px solid var(--c-border);
+            border-radius: var(--r-md);
+            padding: var(--s-3) var(--s-4);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: var(--s-3);
+        }
+
+        .todo-item__summary {
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .todo-item__controls {
+            display: flex;
+            gap: var(--s-2);
+            align-items: center;
+        }
+
+        /* ========== List Actions ========== */
+        .list-actions {
+            margin-top: var(--s-6);
+            display: flex;
+            justify-content: flex-end;
+        }
+
   body
-    header
-    main
-      == yield
-    footer
+    .app
+      header.app__header
+        .app__header-inner
+          a.app__brand href="/" TODO
+          nav.app__nav
+            a.btn.btn--ghost href="/" Home
+
+      main.app__main
+        .app__container
+          == yield
+
+      footer.app__footer

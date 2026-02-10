@@ -1,21 +1,31 @@
-h1 #{list.name}
+/ show.slim
+.section.page
+  .page__header
+    div
+      h1.page__title #{list.name}
+      p.page__subtitle Add items and tick them off
 
-a href='#' Add item
+    a.btn href="#" Add item
 
-form action="/lists/#{list.slug}/items" method="post"
-  label for="list_item[summary]"
-    input name="list_item[summary]" type="text"
-  input type="submit" value="Save"
+  form.todo-form action="/lists/#{list.slug}/items" method="post"
+    .todo-form__row
+      .todo-form__field
+        label.todo-form__label for="list_item[summary]" Item
+        input.todo-form__input name="list_item[summary]" type="text" placeholder="e.g. Buy milk"
+      .todo-form__actions
+        input.btn type="submit" value="Save"
 
-- list_items.each do |list_item|
-  .list_item
-    .list_item__summary
-        = list_item.summary
+  .todo-list
+    - list_items.each do |list_item|
+      .todo-item
+        .todo-item__summary = list_item.summary
 
-    form.list_item__control action="/lists/#{list.slug}/items/#{list_item.id}" method="POST"
+        .todo-item__controls
+          form action="/lists/#{list.slug}/items/#{list_item.id}" method="POST"
+            input type="hidden" name="_method" value="DELETE"
+            input.btn.btn--danger.btn--small type="submit" value="Remove"
+
+  .list-actions
+    form action="/lists/#{list.slug}" method="POST"
       input type="hidden" name="_method" value="DELETE"
-      input.list_item__control type="submit" value="Remove"
-
-form action="/lists/#{list.slug}" method="POST"
-  input type="hidden" name="_method" value="DELETE"
-  input type="submit" value="Delete list"
+      input.btn.btn--danger type="submit" value="Delete list"

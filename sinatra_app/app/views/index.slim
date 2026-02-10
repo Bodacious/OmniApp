@@ -1,13 +1,21 @@
-h1 My lists
-a href="#" New list
+/ index.slim
+.section.page
+  .page__header
+    div
+      h1.page__title My lists
+      p.page__subtitle Create and manage your lists
 
-form action="/lists" method="post"
-  label for="list[name]"
-    input type="text" name="list[name]"
+    a.btn href="#" New list
 
-  input type="submit" value="Save"
+  form.todo-form action="/lists" method="post"
+    .todo-form__row
+      .todo-form__field
+        label.todo-form__label for="list[name]" List name
+        input.todo-form__input type="text" name="list[name]" placeholder="e.g. Groceries"
+      .todo-form__actions
+        input.btn type="submit" value="Save"
 
-
-- lists.each do |list|
-  .list
-    a href="/lists/#{list.slug}" = list.name
+  .list-grid
+    - lists.each do |list|
+      .list-card
+        a.list-card__link href="/lists/#{list.slug}" = list.name
