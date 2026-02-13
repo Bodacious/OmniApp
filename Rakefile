@@ -1,6 +1,7 @@
 # Rakefile
 # Runs Minitest tests under domain/test
 
+$LOAD_PATH << File.expand_path("./domain", __dir__)
 require "rake/testtask"
 
 app_dir = ENV.fetch('APP_NAME', 'sinatra') + "_app"
