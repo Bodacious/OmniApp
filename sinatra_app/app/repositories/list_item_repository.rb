@@ -1,18 +1,18 @@
 # frozen_string_literal: true
 
-require "models/list_item"
+require 'models/list_item'
 
 class ListItemRepository < Repository
   def save_list_item_to_list(list_slug:, list_item:)
-    DB.run(<<~SQL)
+    DB.run(<<~SQL.squish)
       INSERT INTO list_items (#{list_item.attributes.keys.join(',')}, list_id)
-      SELECT #{list_item.attributes.values.map(&:inspect).join(",")}, id
+      SELECT #{list_item.attributes.values.map(&:inspect).join(',')}, id
       FROM lists
       WHERE slug = '#{list_slug}'
     SQL
     list_item
   rescue Sequel
-    return false
+    false
   end
 
   def all_for_list(list)
@@ -25,10 +25,13 @@ class ListItemRepository < Repository
     list_item
   end
 
+  # rubocop:disable Lint/UnusedMethodArgument
   def delete_list_item(list_slug:, id:)
     # TODO: Filter this by list_slug
     data_source.where(id: id).delete
   rescue Sequel
-    return false
+    false
   end
+
+  # rubocop:enable Lint/UnusedMethodArgument
 end

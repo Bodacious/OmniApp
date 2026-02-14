@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class ListItem
-  require_relative "../lib/core_extensions/hash"
+  require_relative '../lib/core_extensions/hash'
 
   using CoreExtensions::Hash::SymbolizeKeys
 

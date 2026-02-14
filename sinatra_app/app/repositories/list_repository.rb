@@ -1,5 +1,7 @@
-require_relative "repository"
-require "models/list"
+# frozen_string_literal: true
+
+require_relative 'repository'
+require 'models/list'
 
 class ListRepository < Repository
   def save(list)

@@ -1,11 +1,13 @@
+# frozen_string_literal: true
+
 class List
-  require_relative "../lib/core_extensions/hash"
-  require_relative "../lib/core_extensions/string"
+  require_relative '../lib/core_extensions/hash'
+  require_relative '../lib/core_extensions/string'
 
   using CoreExtensions::Hash::SymbolizeKeys
   using CoreExtensions::String::Transformations
 
-  attr_reader :attributes
+  attr_reader :attributes, :items
 
   def initialize(**attributes)
     @items = []
@@ -35,9 +37,5 @@ class List
 
   def slug
     attributes[:slug]
-  end
-
-  def items
-    @items
   end
 end

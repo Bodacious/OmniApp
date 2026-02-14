@@ -1,14 +1,22 @@
+# frozen_string_literal: true
+
 class Repository
   attr_reader :database
   attr_accessor :table_name
 
-  require "forwardable"
+  require 'forwardable'
   extend Forwardable
 
   def self.table_name
-    @table_name ||= name.gsub("Repository", "").gsub(/([A-Z])/, '_\1').downcase.sub(
-      /^_/, ""
-    ) + "s"
+    @table_name ||= begin
+      singular = name.gsub('Repository', '')
+                     .gsub(/([A-Z])/, '_\1')
+                     .downcase
+                     .sub(
+                       /^_/, ''
+                     )
+      "#{singular}s"
+    end
   end
 
   def_delegators :data_source, :insert, :all

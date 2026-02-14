@@ -1,0 +1,21 @@
+/ index.slim
+.section.page
+  .page__header
+    div
+      h1.page__title My lists
+      p.page__subtitle Create and manage your lists
+
+    a.btn href="#" New list
+
+  form.todo-form action="/lists" method="post"
+    .todo-form__row
+      .todo-form__field
+        label.todo-form__label for="list[name]" List name
+        input.todo-form__input type="text" name="list[name]" placeholder="e.g. Groceries"
+      .todo-form__actions
+        input.btn type="submit" value="Save"
+
+  .list-grid
+    - lists.each do |list|
+      .list-card
+        a.list-card__link href="/lists/#{list.slug}" = list.name

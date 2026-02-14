@@ -1,14 +1,16 @@
+# frozen_string_literal: true
+
 # Rakefile
 # Runs Minitest tests under domain/test
 
-$LOAD_PATH << File.expand_path("./domain", __dir__)
-require "rake/testtask"
+$LOAD_PATH << File.expand_path('./domain', __dir__)
+require 'rake/testtask'
 
-app_dir = ENV.fetch('APP_NAME', 'sinatra') + "_app"
+app_dir = "#{ENV.fetch('APP_NAME', 'sinatra')}_app"
 
 Rake::TestTask.new(:test) do |t|
-  t.pattern = "**/*_test.rb"
-  t.libs << %W[domain domain/lib domain/test]
+  t.pattern = '**/*_test.rb'
+  t.libs << %w[domain domain/lib domain/test]
   t.libs << %W[#{app_dir} #{app_dir}/test]
 
   t.verbose = true

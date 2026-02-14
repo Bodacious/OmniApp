@@ -1,0 +1,31 @@
+AllCops:
+  NewCops: enable
+  Exclude:
+    - "bin/*" # I don't own these
+    - "*/bin/*" # I don't own these
+
+require:
+  - rubocop-capybara
+  - rubocop-minitest
+  - rubocop-rails
+  - rubocop-sequel
+
+plugins:
+  - rubocop-rake
+
+Metrics/BlockLength:
+  Exclude:
+    - rails_app/db/**/*
+
+Metrics/MethodLength:
+  Enabled: false
+
+Minitest/MultipleAssertions:
+  Enabled: false
+
+Rails/SkipsModelValidations:
+  Exclude:
+    - "**/repositories/*repository.rb"
+
+Style/Documentation:
+  Enabled: false

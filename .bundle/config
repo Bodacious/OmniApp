@@ -1,2 +1,2 @@
 ---
-BUNDLE_WITH: "sinatra"
+BUNDLE_WITH: "rails,sinatra"
