@@ -15,7 +15,7 @@ module Assertions
   def refute_content(content, message = nil)
     message ||= "Expected page to not have content '#{content}' but did"
 
-    assert_not page.has_content?(content.to_s), message
+    refute page.has_content?(content.to_s), message
   end
 
   def assert_current_path(path, message = nil)

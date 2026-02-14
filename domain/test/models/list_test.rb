@@ -19,7 +19,7 @@ class ListTest < Minitest::Test
   def test_persisted_is_false_when_id_nil
     list = List.new(id: nil)
 
-    assert_not_predicate list, :persisted?
+    refute_predicate list, :persisted?
   end
 
   def test_list_items_defaults_to_an_empty_array

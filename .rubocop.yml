@@ -23,6 +23,13 @@ Metrics/MethodLength:
 Minitest/MultipleAssertions:
   Enabled: false
 
+Rails:
+  Include:
+    - "rails_app/**/*"
+
+Rails/DynamicFindBy:
+  Enabled: false
+
 Rails/SkipsModelValidations:
   Exclude:
     - "**/repositories/*repository.rb"

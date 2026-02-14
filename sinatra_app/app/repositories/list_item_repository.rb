@@ -4,7 +4,7 @@ require 'models/list_item'
 
 class ListItemRepository < Repository
   def save_list_item_to_list(list_slug:, list_item:)
-    DB.run(<<~SQL.squish)
+    DB.run(<<~SQL)
       INSERT INTO list_items (#{list_item.attributes.keys.join(',')}, list_id)
       SELECT #{list_item.attributes.values.map(&:inspect).join(',')}, id
       FROM lists

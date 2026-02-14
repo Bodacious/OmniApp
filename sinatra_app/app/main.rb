@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'bundler'
-Bundler.require(:default, :app)
+require 'bundler/setup'
+Bundler.require(:default, :sinatra)
 
 $LOAD_PATH << File.dirname(__FILE__)
 
@@ -52,7 +52,7 @@ class OmniApp < Sinatra::Base
   end
 
   get '/lists/:slug' do
-    list = list_repository.find_by(slug: params[:slug])
+    list = list_repository.find_by_slug(params[:slug])
     list_items = list_item_repository.all_for_list(list)
     slim :'lists/show', locals: { list: list, list_items: list_items }
   end
