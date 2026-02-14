@@ -7,7 +7,7 @@ class ListsController < ApplicationController
   end
 
   def show
-    list = list_repository.find_by(slug: params.require(:slug))
+    list = list_repository.find_by_slug(params.require(:slug))
     list_items = list_item_repository.all_for_list(list)
     render template: 'lists/show', locals: { list: list, list_items: list_items }
   end
