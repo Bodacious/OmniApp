@@ -1,0 +1,30 @@
+# .github/workflows/test.yml
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Run test with specific App framework
+        app_name: [ sinatra, rails ]
+
+    env:
+      APP_NAME: ${{ matrix.app_name }}
+      BUNDLE_WITHOUT: "" # optional; avoids surprises if you use groups
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Run tests
+        run: bundle exec rake test
