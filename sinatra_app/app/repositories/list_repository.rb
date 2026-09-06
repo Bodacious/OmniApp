@@ -6,7 +6,7 @@ require 'models/list'
 class ListRepository < Repository
   def save(list)
     if list.persisted?
-      insert(**list.attributes)
+      data_source.where(id: list.id).update(**list.attributes.except(:id))
     else
       list.id = insert(**list.attributes)
     end
@@ -15,16 +15,16 @@ class ListRepository < Repository
 
   def find(id)
     result = data_source.select(:id, :name, :slug).where(id: id).first
-    List.new(**result.to_h)
+    result && List.new(**result)
   end
 
   def find_by_slug(slug)
     result = data_source.select(:id, :name, :slug).where(slug: slug).first
-    List.new(**result.to_h)
+    result && List.new(**result)
   end
 
   def delete_by_slug(slug)
-    data_source.where(slug: slug).delete
+    data_source.where(slug: slug).delete.positive?
   end
 
   def all
