@@ -19,6 +19,10 @@ class ListItem
     attributes[:id]
   end
 
+  def id=(value)
+    attributes[:id] = value
+  end
+
   def summary
     attributes[:summary]
   end

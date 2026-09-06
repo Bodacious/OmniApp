@@ -6,7 +6,7 @@ module CoreExtensions
       refine ::String do
         def dasherize
           strip
-            .gsub(/[^\w]+\Z/, '')
+            .gsub(/[^\w]+$/, '')
             .gsub(/[^\w]+/, '-')
             .downcase
         end

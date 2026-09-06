@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>OmniApp (Opal)</title>
+  <style>
+    body { font-family: sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; }
+    ul { list-style: none; padding: 0; }
+    li { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid #ddd; }
+    li span[data-action="select-list"] { cursor: pointer; }
+    form { display: flex; gap: 0.5rem; margin: 0.75rem 0; }
+    [hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <h1>OmniApp</h1>
+  <p>The same List/ListItem domain model as the Rails and Sinatra apps, running entirely in the browser via Opal.</p>
+
+  <label for="backend-select">Persistence backend:</label>
+  <select id="backend-select">
+    <option value="memory">In-memory (resets on reload)</option>
+    <option value="local_storage">Browser storage (persists across reloads)</option>
+  </select>
+
+  <section id="lists-section">
+    <h2>My lists</h2>
+    <ul id="lists"></ul>
+    <form id="new-list-form">
+      <input type="text" id="new-list-name" placeholder="List name" required>
+      <button type="submit">New list</button>
+    </form>
+  </section>
+
+  <section id="list-detail" hidden>
+    <h2 id="list-detail-name"></h2>
+    <ul id="list-items"></ul>
+    <form id="new-item-form">
+      <input type="text" id="new-item-summary" placeholder="Item" required>
+      <button type="submit">Add item</button>
+    </form>
+    <button id="delete-list-button">Delete list</button>
+  </section>
+
+  <script src="/assets/application.js"></script>
+</body>
+</html>

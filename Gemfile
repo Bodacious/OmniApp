@@ -39,6 +39,10 @@ group :sinatra do
   gem 'sqlite3', '~> 2.5'
 end
 
+group :browser do
+  gem 'opal', '~> 1.8'
+end
+
 group :test do
   gem 'capybara', '~> 3.40'
   gem 'difftastic'

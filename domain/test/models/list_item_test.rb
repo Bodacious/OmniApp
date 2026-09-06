@@ -21,4 +21,19 @@ class ListItemTest < Minitest::Test
 
     assert_equal 'list-item-summary', list_item.summary
   end
+
+  def test_persisted_is_false_when_id_nil
+    list_item = ListItem.new(id: nil)
+
+    refute_predicate list_item, :persisted?
+  end
+
+  def test_id_can_be_assigned_after_init
+    list_item = ListItem.new
+
+    list_item.id = 1
+
+    assert_equal 1, list_item.id
+    assert_predicate list_item, :persisted?
+  end
 end
