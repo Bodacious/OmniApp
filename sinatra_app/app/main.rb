@@ -87,7 +87,7 @@ class OmniApp < Sinatra::Base
   private
 
   def list_repository
-    @list_repository ||= ListRepository.new(DB)
+    LIST_REPOSITORY
   end
 
   def list_item_repository
