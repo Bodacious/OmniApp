@@ -64,19 +64,20 @@ class OmniApp < Sinatra::Base
   end
 
   post '/lists/:list_slug/items' do
+    list = list_repository.find_by_slug(params[:list_slug])
+    halt 404 unless list
+
     list_item = ListItem.new(**params[:list_item])
-    if list_item_repository.save_list_item_to_list(list_slug: params[:list_slug],
-                                                   list_item: list_item)
-      redirect to("/lists/#{params[:list_slug]}")
-      status 301
-    else
-      status 422
-    end
+    list_item.list_id = list.id
+    list_item_repository.save(list_item)
+    redirect to("/lists/#{params[:list_slug]}")
+    status 301
   end
 
   delete '/lists/:list_slug/items/:id' do
-    if list_item_repository.delete_list_item(list_slug: params[:list_slug],
-                                             id: params[:id])
+    item = owned_item(params[:list_slug], params[:id])
+
+    if item && list_item_repository.delete(item.id)
       redirect to("/lists/#{params[:list_slug]}")
       status 301
     else
@@ -85,6 +86,14 @@ class OmniApp < Sinatra::Base
   end
 
   private
+
+  def owned_item(list_slug, id)
+    list = list_repository.find_by_slug(list_slug)
+    return unless list
+
+    item = list_item_repository.find(id.to_i)
+    item if item&.list_id == list.id
+  end
 
   def list_repository
     LIST_REPOSITORY
