@@ -4,28 +4,57 @@ require 'logger'
 require 'sequel'
 require 'sqlite3'
 
-# connect to an in-memory database
-logger_path = File.expand_path("../../../log/#{ENV.fetch('RACK_ENV', nil)}.db.log",
-                               __FILE__)
-database_path = File.expand_path("../../../databases/#{ENV.fetch('RACK_ENV', nil)}.db",
-                                 __FILE__)
-DB = Sequel.sqlite(database: database_path,
-                   logger: Logger.new(logger_path))
+module Persistence
+  module Sql
+    ##
+    # Opens a SQLite connection and puts the schema in place. Both are
+    # explicit calls made by an app's composition root rather than
+    # side effects of requiring this file, so loading code never
+    # connects to a database on its own.
+    #
+    # The environment is passed in rather than sniffed from ENV here:
+    # Sinatra knows it as RACK_ENV and Rails as RAILS_ENV, and which
+    # one applies is the app's business, not the persistence layer's.
+    module Database
+      ROOT = File.expand_path('../..', __dir__)
 
-table_creation_method = ENV['RACK_ENV'] == 'development' ? :create_table : :create_table!
-# create an items table
-unless ENV['RACK_ENV'] != 'test' && DB.table_exists?(:lists)
-  DB.public_send table_creation_method, :lists do
-    primary_key :id
-    String :name, unique: false, null: false
-    String :slug, unique: true, null: false
-  end
-end
+      def self.connect(environment)
+        ::Sequel.sqlite(database: database_path(environment),
+                        logger: Logger.new(log_path(environment)))
+      end
 
-unless ENV['RACK_ENV'] != 'test' && DB.table_exists?(:list_items)
-  DB.public_send table_creation_method, :list_items do
-    primary_key :id
-    String :summary, null: false
-    foreign_key :list_id, references: :lists, null: false
+      ##
+      # Creates any missing tables. Pass reset: true (as the test
+      # environment does) to drop them first, so each run starts from
+      # a known-empty schema.
+      def self.create_schema!(database, reset: false)
+        drop_schema!(database) if reset
+
+        database.create_table?(:lists) do
+          primary_key :id
+          String :name, null: false
+          String :slug, unique: true, null: false
+        end
+
+        database.create_table?(:list_items) do
+          primary_key :id
+          String :summary, null: false
+          foreign_key :list_id, references: :lists, null: false
+        end
+      end
+
+      def self.drop_schema!(database)
+        database.drop_table?(:list_items)
+        database.drop_table?(:lists)
+      end
+
+      def self.database_path(environment)
+        File.join(ROOT, 'databases', "#{environment}.db")
+      end
+
+      def self.log_path(environment)
+        File.join(ROOT, 'log', "#{environment}.db.log")
+      end
+    end
   end
 end

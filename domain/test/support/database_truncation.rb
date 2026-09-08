@@ -2,7 +2,7 @@
 
 module DatabaseTruncation
   def after_teardown
-    DB[:list_items].truncate
-    DB[:lists].truncate
+    DATABASE[:list_items].truncate
+    DATABASE[:lists].truncate
   end
 end

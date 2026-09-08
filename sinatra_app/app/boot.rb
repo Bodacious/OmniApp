@@ -13,6 +13,11 @@ require 'persistence/memory/store'
 require 'persistence/sql/database'
 require 'persistence/sql/store'
 
+ENVIRONMENT = ENV.fetch('RACK_ENV', 'development')
+
+DATABASE = Persistence::Sql::Database.connect(ENVIRONMENT)
+Persistence::Sql::Database.create_schema!(DATABASE, reset: ENVIRONMENT == 'test')
+
 # The composition root: the only place that knows both which entities
 # exist and which backend stores them. Everything downstream -- the
 # repositories, the routes, the views -- is identical either way.
@@ -21,8 +26,8 @@ list_store, list_item_store =
     [Persistence::Memory::Store.new(entity_class: List),
      Persistence::Memory::Store.new(entity_class: ListItem)]
   else
-    [Persistence::Sql::Store.new(DB, table: :lists, entity_class: List),
-     Persistence::Sql::Store.new(DB, table: :list_items, entity_class: ListItem)]
+    [Persistence::Sql::Store.new(DATABASE, table: :lists, entity_class: List),
+     Persistence::Sql::Store.new(DATABASE, table: :list_items, entity_class: ListItem)]
   end
 
 LIST_REPOSITORY = ListRepository.new(list_store)

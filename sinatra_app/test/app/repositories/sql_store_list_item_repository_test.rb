@@ -11,7 +11,7 @@ class SqlStoreListItemRepositoryTest < Minitest::Test
 
   def repository
     @repository ||= ListItemRepository.new(
-      Persistence::Sql::Store.new(DB, table: :list_items, entity_class: ListItem)
+      Persistence::Sql::Store.new(DATABASE, table: :list_items, entity_class: ListItem)
     )
   end
 end
