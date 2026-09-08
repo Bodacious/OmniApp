@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
 class List
+  require_relative '../entity'
   require_relative '../lib/core_extensions/hash'
   require_relative '../lib/core_extensions/string'
+
+  include Entity
 
   using CoreExtensions::Hash::SymbolizeKeys
   using CoreExtensions::String::Transformations
@@ -13,10 +16,6 @@ class List
     @items = []
     @attributes = attributes.symbolize_keys
     self.attributes[:slug] ||= self.attributes[:name].to_s.dasherize
-  end
-
-  def persisted?
-    !id.nil?
   end
 
   def id

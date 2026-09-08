@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 class ListItem
+  require_relative '../entity'
   require_relative '../lib/core_extensions/hash'
+
+  include Entity
 
   using CoreExtensions::Hash::SymbolizeKeys
 
@@ -9,10 +12,6 @@ class ListItem
 
   def initialize(attributes = {})
     @attributes = attributes.symbolize_keys
-  end
-
-  def persisted?
-    !id.nil?
   end
 
   def id
