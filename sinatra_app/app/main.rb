@@ -100,6 +100,6 @@ class OmniApp < Sinatra::Base
   end
 
   def list_item_repository
-    @list_item_repository ||= ListItemRepository.new(DB)
+    LIST_ITEM_REPOSITORY
   end
 end

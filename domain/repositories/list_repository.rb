@@ -1,19 +1,44 @@
 # frozen_string_literal: true
 
-require_relative 'repository'
-require 'models/list'
+##
+# Lists, as the domain talks about them. Names the queries the domain
+# cares about -- by slug -- and delegates the mechanics to an injected
+# store, so this one class serves every backend rather than needing a
+# subclass per backend.
+#
+# The store is anything satisfying the store API: save, find, all,
+# delete, find_by(**criteria), where(**criteria), delete_by(**criteria).
+# See persistence/ for the implementations.
+class ListRepository
+  def initialize(store)
+    @store = store
+  end
 
-class ListRepository < Repository
-  def initialize(database_connection)
-    super(database_connection, entity_class: List)
+  def save(list)
+    store.save(list)
+  end
+
+  def find(id)
+    store.find(id)
+  end
+
+  def all
+    store.all
+  end
+
+  def delete(id)
+    store.delete(id)
   end
 
   def find_by_slug(slug)
-    result = data_source.where(slug: slug).first
-    result && entity_class.new(**result)
+    store.find_by(slug: slug)
   end
 
   def delete_by_slug(slug)
-    data_source.where(slug: slug).delete.positive?
+    store.delete_by(slug: slug)
   end
+
+  private
+
+  attr_reader :store
 end

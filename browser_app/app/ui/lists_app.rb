@@ -9,11 +9,14 @@ require_relative 'lists_view'
 # and ListItem storage without reloading the page -- proving the same
 # domain model works against multiple persistence backends, this time
 # entirely client-side.
+#
+# Takes its backends as a Hash of name => callable returning a
+# [list_repository, list_item_repository] pair, so it never learns
+# what any of them are actually backed by.
 class ListsApp
-  BACKENDS = {
-    'memory' => -> { [InMemoryListRepository.new, InMemoryListItemRepository.new] },
-    'local_storage' => -> { [LocalStorageListRepository.new, LocalStorageListItemRepository.new] }
-  }.freeze
+  def initialize(backends)
+    @backends = backends
+  end
 
   def start
     @backend_key = 'memory'
@@ -108,8 +111,10 @@ class ListsApp
   end
 
   def repositories_for(key)
-    @repositories[key] ||= BACKENDS.fetch(key).call
+    @repositories[key] ||= backends.fetch(key).call
   end
+
+  attr_reader :backends
 
   def render
     @view.render(list_repository, list_item_repository, @selected_list)

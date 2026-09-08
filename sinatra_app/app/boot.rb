@@ -1,18 +1,29 @@
 # frozen_string_literal: true
 
 # Loads the core classes of tha application, without establishing the routes, actions etc.
+$LOAD_PATH << File.expand_path('../..', __dir__)
 $LOAD_PATH << File.expand_path('../../domain', __dir__)
-puts $LOAD_PATH
+
 require_relative '../../domain/lib/core_extensions'
-require 'repositories/database'
+require 'models/list'
+require 'models/list_item'
 require 'repositories/list_repository'
 require 'repositories/list_item_repository'
-require 'repositories/in_memory_list_repository'
+require 'persistence/memory/store'
+require 'persistence/sql/database'
+require 'persistence/sql/store'
 
-# The List persistence backend is chosen at boot via LIST_REPOSITORY_BACKEND,
-# demonstrating that the app is agnostic to which one is plugged in.
-LIST_REPOSITORY = if ENV['LIST_REPOSITORY_BACKEND'] == 'memory'
-                    InMemoryListRepository.new
-                  else
-                    ListRepository.new(DB)
-                  end
+# The composition root: the only place that knows both which entities
+# exist and which backend stores them. Everything downstream -- the
+# repositories, the routes, the views -- is identical either way.
+list_store, list_item_store =
+  if ENV['PERSISTENCE_BACKEND'] == 'memory'
+    [Persistence::Memory::Store.new(entity_class: List),
+     Persistence::Memory::Store.new(entity_class: ListItem)]
+  else
+    [Persistence::Sql::Store.new(DB, table: :lists, entity_class: List),
+     Persistence::Sql::Store.new(DB, table: :list_items, entity_class: ListItem)]
+  end
+
+LIST_REPOSITORY = ListRepository.new(list_store)
+LIST_ITEM_REPOSITORY = ListItemRepository.new(list_item_store)

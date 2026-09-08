@@ -29,11 +29,11 @@ class ListsController < ApplicationController
   protected
 
   def list_repository
-    @list_repository ||= ListRepository.new(DB)
+    LIST_REPOSITORY
   end
 
   def list_item_repository
-    @list_item_repository ||= ListItemRepository.new(DB)
+    LIST_ITEM_REPOSITORY
   end
 
   def list_params

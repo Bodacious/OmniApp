@@ -1,14 +1,36 @@
 # frozen_string_literal: true
 
-require_relative 'repository'
-require 'models/list_item'
+##
+# List items, as the domain talks about them. Names the query the
+# domain cares about -- the items belonging to a list -- and delegates
+# the mechanics to an injected store, so this one class serves every
+# backend rather than needing a subclass per backend.
+#
+# The store is anything satisfying the store API: save, find, all,
+# delete, find_by(**criteria), where(**criteria), delete_by(**criteria).
+# See persistence/ for the implementations.
+class ListItemRepository
+  def initialize(store)
+    @store = store
+  end
 
-class ListItemRepository < Repository
-  def initialize(database_connection)
-    super(database_connection, entity_class: ListItem)
+  def save(list_item)
+    store.save(list_item)
+  end
+
+  def find(id)
+    store.find(id)
   end
 
   def all_for_list(list)
-    data_source.where(list_id: list.id).all.map { entity_class.new(**_1) }
+    store.where(list_id: list.id)
   end
+
+  def delete(id)
+    store.delete(id)
+  end
+
+  private
+
+  attr_reader :store
 end

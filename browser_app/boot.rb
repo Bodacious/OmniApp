@@ -13,6 +13,7 @@ module BrowserApp
   ROOT = __dir__
   APP_DIR = File.expand_path('app', ROOT)
   DOMAIN_DIR = File.expand_path('../domain', ROOT)
+  REPO_ROOT = File.expand_path('..', ROOT)
   INDEX_HTML = File.read(File.expand_path('public/index.html', ROOT))
 
   def self.call(env)
@@ -25,7 +26,7 @@ module BrowserApp
 
   def self.javascript_bundle
     builder = Opal::Builder.new
-    builder.append_paths(APP_DIR, DOMAIN_DIR)
+    builder.append_paths(APP_DIR, DOMAIN_DIR, REPO_ROOT)
     builder.build('opal')
     builder.build('application')
     builder.to_s
