@@ -26,6 +26,7 @@ Minitest/MultipleAssertions:
 Rails:
   Include:
     - "rails_app/**/*"
+    - "apps/rails/**/*"
 
 Rails/DynamicFindBy:
   Enabled: false

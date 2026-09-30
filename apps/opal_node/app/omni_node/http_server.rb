@@ -35,16 +35,16 @@ module OmniNode
 
     def respond(request, response, body)
       started = `Date.now()`
-      method = `#{request}.method`
+      verb = `#{request}.method`
       path = `new URL(#{request}.url, 'http://localhost').pathname`
       result = begin
-        @router.call(Request.new(method, path, form(body)))
+        @router.call(Request.new(verb, path, form(body)))
       rescue Exception => e # rubocop:disable Lint/RescueException -- JS errors too; keep serving
         $stderr.puts "#{e.class}: #{e.message}"
         Response.new(500, { 'content-type' => 'text/plain' }, 'Internal Server Error')
       end
       write(response, result)
-      $stdout.puts "#{method} #{path} #{result.status} #{`Date.now()` - started}ms"
+      $stdout.puts "#{verb} #{path} #{result.status} #{`Date.now()` - started}ms"
     end
 
     # An application/x-www-form-urlencoded body, as a Hash.

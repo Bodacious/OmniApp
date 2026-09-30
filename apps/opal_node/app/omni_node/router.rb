@@ -3,7 +3,7 @@
 require 'json'
 
 module OmniNode
-  Request = Struct.new(:method, :path, :form)
+  Request = Struct.new(:verb, :path, :form)
   Response = Struct.new(:status, :headers, :body)
 
   ##
@@ -18,7 +18,7 @@ module OmniNode
     end
 
     def call(request)
-      case [request.method, request.path]
+      case [request.verb, request.path]
       when ['GET', '/'] then page
       when ['POST', '/todos'] then create(request.form['title'])
       when ['GET', '/health'] then json(@composition.health)
@@ -42,7 +42,7 @@ module OmniNode
 
     def todo_action(request)
       match = TODO_ACTION.match(request.path)
-      return not_found unless request.method == 'POST' && match
+      return not_found unless request.verb == 'POST' && match
 
       id = match[1]
       match[2] == 'complete' ? todo_list.complete(id) : todo_list.delete(id)
