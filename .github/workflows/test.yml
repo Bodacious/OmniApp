@@ -1,4 +1,8 @@
 # .github/workflows/test.yml
+#
+# The minitest suites of the list-based apps that predate the stack
+# matrix (sinatra_app/, rails_app/). The stack matrix, its unit tests
+# and the domain purity checks are in stack-matrix.yml.
 name: test
 
 on:
@@ -27,4 +31,4 @@ jobs:
           bundler-cache: true
 
       - name: Run tests
-        run: bundle exec rake test
+        run: bundle exec rake legacy_test

@@ -1,0 +1,27 @@
+# Postgres for local runs of the postgres stacks:
+#
+#   docker compose up -d
+#   export DATABASE_URL=postgres://postgres:postgres@localhost:5432/omni
+#
+# bin/omni-test and CI use a separate database, omni_test, because the
+# specs delete every todo before each scenario.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: omni
+    ports:
+      - "5432:5432"
+    volumes:
+      - omni-postgres:/var/lib/postgresql/data
+      - ./config/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d omni"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  omni-postgres:

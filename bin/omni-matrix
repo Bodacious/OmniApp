@@ -1,0 +1,74 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Lists the valid cells of the stack matrix, from config/stack_matrix.yml.
+#
+#   bin/omni-matrix                  # a table of cells, then the exclusions and why
+#   bin/omni-matrix --json           # {"include": [...]} for a GitHub Actions matrix
+#   bin/omni-matrix --run            # run bin/omni-test on every cell, then print pass/fail
+#   bin/omni-matrix --app sinatra --interface slim    # filter any of the above
+#
+# Filters take a value from the matrix or "all" (the default).
+
+require 'json'
+require 'optparse'
+require_relative '../lib/omni/matrix'
+
+ROOT = File.expand_path('..', __dir__)
+
+options = { mode: :list, filters: {} }
+parser = OptionParser.new do |opts|
+  opts.banner = 'Usage: bin/omni-matrix [--json | --run] [--app X] [--persistence X] [--interface X]'
+  opts.on('--json', 'Print the cells as JSON for a GitHub Actions matrix') { options[:mode] = :json }
+  opts.on('--run', 'Run bin/omni-test against every cell, one after another') { options[:mode] = :run }
+  Omni::Matrix::AXES.each do |axis|
+    opts.on("--#{axis} VALUE", "Only cells with this #{axis} (or \"all\")") { |value| options[:filters][axis] = value }
+  end
+end
+parser.parse!(ARGV)
+
+matrix = Omni::Matrix.load
+filters = options[:filters].reject { |_axis, value| value.to_s.empty? || value == 'all' }
+filters.each do |axis, value|
+  next if matrix.values(axis).include?(value)
+
+  abort "bin/omni-matrix: --#{axis} #{value} is not a known #{axis}. " \
+        "Choose all or one of: #{matrix.values(axis).join(', ')}"
+end
+
+cells = matrix.cells.select { |stack| filters.all? { |axis, value| stack.public_send(axis) == value } }
+abort "bin/omni-matrix: no valid cells match #{filters}" if cells.empty?
+
+def table(rows, headers)
+  widths = headers.each_index.map { |i| ([headers[i]] + rows.map { |row| row[i] }).map(&:length).max }
+  line = ->(row) { row.each_with_index.map { |cell, i| cell.ljust(widths[i]) }.join('  ').rstrip }
+  [line.(headers), line.(widths.map { |w| '-' * w }), *rows.map(&line)].join("\n")
+end
+
+case options[:mode]
+when :json
+  include = cells.map { |stack| stack.to_h.merge('name' => stack.label) }
+  puts JSON.generate('include' => include)
+when :list
+  puts table(cells.map { |stack| stack.to_h.values }, %w[app persistence interface])
+  puts "\n#{cells.size} valid cells."
+  matrix.exclusions.each do |exclusion|
+    selector = Omni::Matrix::AXES.filter_map { |axis| "#{axis}=#{exclusion[axis]}" if exclusion.key?(axis) }.join(', ')
+    puts "\nExcluded: #{selector}\n  #{exclusion.fetch('reason')}"
+  end
+when :run
+  results = cells.map do |stack|
+    env = { 'OMNI_APP' => stack.app, 'OMNI_PERSISTENCE' => stack.persistence, 'OMNI_INTERFACE' => stack.interface }
+    puts "\n=== #{stack.label} ==="
+    started = Time.now
+    passed = system(env, File.join(ROOT, 'bin', 'omni-test'), '--format', 'progress')
+    [stack, passed, Time.now - started]
+  end
+
+  puts "\n#{table(results.map do |stack, passed, seconds|
+    [*stack.to_h.values, passed ? 'PASS' : 'FAIL', format('%.1fs', seconds)]
+  end, %w[app persistence interface result time])}"
+  failures = results.count { |_, passed, _| !passed }
+  puts "\n#{results.size - failures}/#{results.size} cells passed."
+  exit(failures.zero? ? 0 : 1)
+end

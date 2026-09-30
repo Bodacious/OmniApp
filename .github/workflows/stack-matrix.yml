@@ -1,0 +1,159 @@
+# Runs the shared Cucumber specs against every valid cell of the stack
+# matrix. The cells come from config/stack_matrix.yml via
+# bin/omni-matrix, so adding an adapter there adds its cells here.
+name: stack-matrix
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'App layer to run (a value from config/stack_matrix.yml, or all)'
+        default: all
+        type: string
+      persistence:
+        description: 'Persistence to run (a value from config/stack_matrix.yml, or all)'
+        default: all
+        type: string
+      interface:
+        description: 'Interface to run (a value from config/stack_matrix.yml, or all)'
+        default: all
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stack-matrix-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DATABASE_URL: postgres://postgres:postgres@localhost:5432/omni_test
+
+jobs:
+  plan:
+    name: plan
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+      - id: plan
+        name: List the cells to run
+        env:
+          APP: ${{ inputs.app || 'all' }}
+          PERSISTENCE: ${{ inputs.persistence || 'all' }}
+          INTERFACE: ${{ inputs.interface || 'all' }}
+        run: |
+          bin/omni-matrix --app "$APP" --persistence "$PERSISTENCE" --interface "$INTERFACE"
+          echo "matrix=$(bin/omni-matrix --json --app "$APP" --persistence "$PERSISTENCE" --interface "$INTERFACE")" >> "$GITHUB_OUTPUT"
+
+  domain-purity:
+    name: domain purity
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install libpq-dev (for the pg gem)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libpq-dev
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Load domain/ with ruby --disable-gems, then compile it alone with Opal and run it on Node
+        run: bin/omni-domain-check
+
+  unit:
+    name: unit tests
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: omni_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d omni_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install libpq-dev (for the pg gem)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libpq-dev
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+      - name: Domain tests and the repository contract on every Ruby adapter
+        run: bundle exec rake test
+
+  test:
+    name: ${{ matrix.name }}
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: omni_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d omni_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      OMNI_APP: ${{ matrix.app }}
+      OMNI_PERSISTENCE: ${{ matrix.persistence }}
+      OMNI_INTERFACE: ${{ matrix.interface }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install libpq-dev (for the pg gem and pg-native)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libpq-dev
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: apps/opal_node/package-lock.json
+      - name: Install the Node app's packages
+        if: matrix.app == 'opal_node'
+        run: npm ci --prefix apps/opal_node
+      - name: Run the specs against ${{ matrix.name }}
+        run: bin/omni-test
+      - name: Keep the server log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-log-${{ matrix.app }}-${{ matrix.persistence }}-${{ matrix.interface }}
+          path: tmp/omni-test/
+          if-no-files-found: ignore
+
+  # The one check to require in branch protection. It fails unless every
+  # job above succeeded; a skipped or cancelled job counts as a failure.
+  matrix-green:
+    name: matrix-green
+    if: always()
+    needs: [plan, domain-purity, unit, test]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check every job passed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")' > /dev/null

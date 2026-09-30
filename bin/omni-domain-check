@@ -1,0 +1,74 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Checks that domain/ is plain Ruby that depends on nothing outside
+# itself (its tests, in domain/test/, are not part of the domain):
+#
+# 1. MRI, started with --disable-gems, requires every domain file. Any
+#    require of a gem, or of a library that is only a gem, fails.
+# 2. Opal compiles every domain file with nothing but domain/ on its
+#    load path, and Node runs the result through the use cases once.
+#
+# This is what CI runs; it needs `bundle install` (for Opal) and node.
+
+require 'rbconfig'
+
+ROOT = File.expand_path('..', __dir__)
+DOMAIN = File.join(ROOT, 'domain')
+files = Dir.glob('**/*.rb', base: DOMAIN).reject { |path| path.start_with?('test/') }.sort
+
+puts "1/2 Loading #{files.size} domain files with ruby --disable-gems"
+load_all = 'ARGV.each { |file| require file }; abort("RubyGems was loaded") if defined?(Gem)'
+clean_env = { 'RUBYOPT' => nil, 'RUBYLIB' => nil, 'BUNDLE_GEMFILE' => nil, 'BUNDLE_BIN_PATH' => nil }
+system(clean_env, RbConfig.ruby, '--disable-gems', '-e', load_all, *files.map { |f| File.join(DOMAIN, f) },
+       exception: false) || abort('FAIL: domain/ needs something outside the Ruby standard library')
+
+puts "2/2 Compiling domain/ alone with Opal and running it on Node"
+require 'bundler/setup'
+require 'fileutils'
+require 'opal'
+
+# A smoke run through every use case, with throwaway adapters written
+# inline: nothing but the domain and Opal's corelib is on the path.
+SMOKE = <<~RUBY
+  class SmokeRepository
+    include Ports::TodoRepository
+    def initialize; @todos = {}; end
+    def all; @todos.values; end
+    def find(id); @todos[id]; end
+    def save(todo); @todos[todo.id] = todo; end
+    def delete(id); !@todos.delete(id).nil?; end
+  end
+
+  class SmokeIds
+    include Ports::IdGenerator
+    def initialize; @count = 0; end
+    def next_id; @count += 1; "smoke-\#{@count}"; end
+  end
+
+  list = TodoList.new(repository: SmokeRepository.new, id_generator: SmokeIds.new)
+  milk = list.add('  Buy milk ')
+  list.add('Walk the dog')
+  list.complete(milk.id)
+  list.delete('smoke-2')
+  begin
+    list.add('   ')
+    raise 'a blank title was accepted'
+  rescue Todo::Invalid
+  end
+  todos = list.todos.map { |todo| [todo.id, todo.title, todo.completed?] }
+  raise "unexpected todos: \#{todos.inspect}" unless todos == [['smoke-1', 'Buy milk', true]]
+  puts 'Opal: domain compiled and every use case ran'
+RUBY
+
+builder = Opal::Builder.new
+builder.append_paths(DOMAIN)
+builder.build('opal')
+files.each { |file| builder.build(file.delete_suffix('.rb')) }
+builder.build_str(SMOKE, 'domain_smoke.rb')
+
+output = File.join(ROOT, 'tmp', 'domain-check.js')
+FileUtils.mkdir_p(File.dirname(output))
+File.write(output, builder.to_s)
+system('node', output, exception: false) || abort('FAIL: the Opal-compiled domain did not run on Node')
+puts 'PASS: domain/ is plain Ruby, loads without gems, and runs under Opal'

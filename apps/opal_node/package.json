@@ -1,0 +1,12 @@
+{
+  "name": "omni-opal-node",
+  "private": true,
+  "description": "The Omni todo app: Ruby compiled with Opal, served by Node's http module.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "pg-native": "3.9.0"
+  }
+}
