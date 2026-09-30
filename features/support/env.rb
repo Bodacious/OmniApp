@@ -13,10 +13,13 @@ Capybara.run_server = false
 Capybara.app_host = OmniStack.base_url
 Capybara.default_max_wait_time = 5
 
+# A cold Chrome on a shared CI runner can take well over 30 seconds to
+# start, so give it room: process_timeout is how long Chrome has to come
+# up, timeout how long any one browser command may take.
 Capybara.register_driver(:cuprite) do |app|
   Capybara::Cuprite::Driver.new(app, window_size: [1200, 900],
                                      browser_options: { 'no-sandbox' => nil },
-                                     process_timeout: 30, timeout: 15)
+                                     process_timeout: 90, timeout: 30)
 end
 Capybara.default_driver = :cuprite
 Capybara.javascript_driver = :cuprite

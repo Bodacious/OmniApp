@@ -13,10 +13,13 @@ Capybara.app_host = ENV.fetch('OMNI_WASM_URL') do
 end
 Capybara.default_max_wait_time = 10
 
+# A cold Chrome on a shared CI runner can take well over 30 seconds to
+# start (see features/support/env.rb), and a first page load here
+# includes compiling CRuby, so both limits are generous.
 Capybara.register_driver(:cuprite) do |app|
   Capybara::Cuprite::Driver.new(app, window_size: [1360, 900],
                                      browser_options: { 'no-sandbox' => nil },
-                                     process_timeout: 30, timeout: 60)
+                                     process_timeout: 90, timeout: 60)
 end
 Capybara.default_driver = :cuprite
 
