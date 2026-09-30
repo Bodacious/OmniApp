@@ -32,15 +32,22 @@
         <h1 class="page__title">Todos</h1>
         <form class="todo-form wasm-form" data-testid="todo-form" autocomplete="off">
           <fieldset class="wasm-form__controls" data-region="controls" disabled>
-            <label class="todo-form__label" for="todo-title">Title</label>
             <div class="todo-form__row">
-              <input class="todo-form__input" id="todo-title" name="title" type="text" placeholder="What needs doing?" data-testid="todo-title-input">
+              <div class="todo-form__field">
+                <label class="todo-form__label" for="todo-title">Title</label>
+                <input class="todo-form__input" id="todo-title" name="title" type="text" placeholder="What needs doing?" autocomplete="off" data-testid="todo-title-input">
+              </div>
+              <div class="todo-form__field todo-form__field--tags">
+                <label class="todo-form__label" for="todo-tags">Tags</label>
+                <input class="todo-form__input" id="todo-tags" name="tags" type="text" placeholder="e.g. home, urgent" autocomplete="off" data-testid="todo-tags-input">
+              </div>
               <button class="btn" type="submit" data-testid="todo-submit">Add todo</button>
             </div>
           </fieldset>
           <div data-region="error"></div>
         </form>
         <nav class="filters" data-region="filters" aria-label="Filter todos"></nav>
+        <nav class="tag-filter" data-region="tag-filter" data-testid="tag-filter" aria-label="Filter by tag"></nav>
         <div data-region="list"></div>
         <footer class="todos-panel__footer" data-region="summary"></footer>
       </section>
@@ -63,8 +70,8 @@
             <g class="hexagon__part hexagon__domain" data-part="use-case">
               <polygon points="195,125 240,47 330,47 375,125 330,203 240,203" />
               <text x="285" y="105" class="hexagon__sub">domain/</text>
-              <text x="285" y="128" class="hexagon__strong">TodoList</text>
-              <text x="285" y="148" class="hexagon__sub">Todo · plain Ruby</text>
+              <text x="285" y="128" class="hexagon__strong">TodoService</text>
+              <text x="285" y="148" class="hexagon__sub">Todo · Tag · plain Ruby</text>
             </g>
 
             <g class="hexagon__part hexagon__port" data-part="port-repository">

@@ -36,12 +36,39 @@ Feature: The todo app on CRuby compiled to WebAssembly
   Scenario: The inspector shows each call across the ports
     When I add a todo titled "Buy milk"
     Then the inspector shows these calls for it, in order:
-      | layer    | call                     |
-      | use_case | TodoList#add("Buy milk") |
-      | port     | IdGenerator#next_id      |
-      | adapter  | crypto.randomUUID()      |
-      | port     | TodoRepository#save      |
-      | adapter  | SQL INSERT INTO todos    |
+      | layer    | call                                   |
+      | use_case | TodoService#add("Buy milk")            |
+      | port     | IdGenerator#next_id                    |
+      | adapter  | crypto.randomUUID()                    |
+      | port     | TodoRepository#save                    |
+      | adapter  | SQL BEGIN                              |
+      | adapter  | SQL INSERT INTO todos                  |
+      | adapter  | SQL DELETE FROM todo_tags WHERE todo_id |
+      | adapter  | SQL COMMIT                             |
+
+  Scenario: A rejected title never reaches the id generator
+    When I add a todo titled "   "
+    Then the inspector shows these calls for it, in order:
+      | layer    | call                   |
+      | use_case | TodoService#add("   ") |
+
+  Scenario: Tagging, filtering by tag and removing a tag
+    When I add a todo titled "Buy milk" tagged "Errands, #Home"
+    And I add a todo titled "File taxes" tagged "work"
+    Then the todo titled "Buy milk" has the tags "errands, home"
+    When I tag the todo titled "File taxes" with "urgent"
+    Then the todo titled "File taxes" has the tags "urgent, work"
+    When I filter by the tag "home"
+    Then I see the todos "Buy milk"
+    When I stop filtering by tag
+    And I remove the tag "errands" from the todo titled "Buy milk"
+    Then the todo titled "Buy milk" has the tags "home"
+    And the page was never reloaded
+
+  Scenario: The domain's tag rules apply in the browser too
+    When I add a todo titled "Buy milk" tagged "not ok!"
+    Then I see the error "Tags can only use letters, numbers and dashes"
+    And I see that there is nothing to do
 
   Scenario Outline: The domain's port contract passes in the browser on every adapter
     When I switch persistence to "<persistence>"
@@ -64,7 +91,8 @@ Feature: The todo app on CRuby compiled to WebAssembly
 
   Scenario: SQLite in localStorage keeps todos across a reload
     Given I switch persistence to "sqlite_local_storage"
-    And I have added the todos "Survives a reload"
+    And I add a todo titled "Survives a reload" tagged "kept"
     When I reload the page
     Then I see the todos "Survives a reload"
+    And the todo titled "Survives a reload" has the tags "kept"
     And the stack badge shows "ruby_wasm / sqlite_local_storage / dom"

@@ -22,9 +22,11 @@ the CI matrix read it.
 
 ```
 domain/                    Plain Ruby. Requires nothing outside itself.
-  todo.rb                  The entity. Its one rule: a title can't be blank.
-  todo_list.rb             The use cases: list, add, complete, delete.
-  ports/                   What the domain needs from outside, which adapters implement:
+  model/                   The model: depends on nothing at all
+    todo.rb                  The entity: a title that can't be blank, at most 5 tags
+    tag.rb                   A value object: normalised (#Home -> home), letters, digits, dashes
+  todo_service.rb          The use cases: list and filter by tag, add, complete, tag, untag, delete
+  ports/                   What the use cases need from outside, which adapters implement:
     todo_repository.rb       storing todos (synchronous)
     id_generator.rb          new ids (so identity never depends on a database)
 adapters/                  Ruby adapters, shared by Rails and Sinatra
@@ -42,11 +44,20 @@ features/                  One set of Cucumber specs, run unchanged against ever
 bin/                       omni, omni-test, omni-matrix, omni-domain-check, omni-wasm, omni-wasm-test
 ```
 
-Each app layer only translates HTTP into use-case calls on `TodoList` and
+Each app layer only translates HTTP into use-case calls on `TodoService` and
 renders a shared template. The composition root reads the stack from the
 environment, builds the adapters and injects them into the domain. `/health`
 reports what was actually built (the connected database, the loaded template
 engine), not an echo of the environment.
+
+The model and the use cases are kept apart on purpose:
+- `Todo` and `Tag` never load or save themselves.
+- `TodoService` is the application service that coordinates them with
+  the outside world. It does that only through the ports, which are
+  interfaces the domain defines.
+- Adapters depend on the domain; the domain depends on no adapter.
+- The SQL adapters store tags in a `todo_tags` join table. The domain
+  only ever sees `Todo#tags`.
 
 ## Running the demo
 
@@ -87,6 +98,8 @@ change where it listens. For `opal_node`, `bin/omni` compiles the bundle first
 2. **Sinatra on in-memory SQLite.** Boot `sinatra / sqlite_memory / erb`.
    - Add a couple of todos and complete one.
    - Submit a blank title to see the domain's rule come back as an error.
+   - Add tags (`home, #Urgent` becomes `home` and `urgent`), then filter by one.
+     Try a sixth tag, or `not ok!`, and see the model's rules on every stack.
    - Restart the server: the in-memory todos are gone.
 3. **Rails on Postgres, with Slim.** Stop the server and boot `rails / postgres / slim`.
    - It's the same page, but the badge says rails / postgres / slim.
@@ -98,7 +111,7 @@ change where it listens. For `opal_node`, `bin/omni` compiles the bundle first
    - loads every `domain/` file with `ruby --disable-gems`;
    - compiles `domain/` alone with Opal and runs the use cases on Node.
 
-   Open `domain/todo_list.rb` and `domain/ports/`: nothing in them knows about Rails, Sinatra, SQL or Node.
+   Open `domain/todo_service.rb` and `domain/ports/`: nothing in them knows about Rails, Sinatra, SQL or Node.
 6. **No silent defaults.** Each of these stops at boot with a message saying what to fix:
    - `bin/omni` with nothing set;
    - `OMNI_APP=opal_node OMNI_PERSISTENCE=postgres OMNI_INTERFACE=slim bin/omni`.
@@ -183,7 +196,7 @@ What the interface adds over the server-rendered pages:
 
 It isn't a cell of the stack matrix. The matrix specs drive a server-side
 stack through `/health` and `/__test__/reset`, and here there's no server-side
-stack. Its own specs cover the same behaviour (adding, the blank-title rule,
+stack. Its own specs cover the same behaviour (adding, tagging, the domain's rules,
 completing, deleting), plus:
 - the filters;
 - the adapter switcher;

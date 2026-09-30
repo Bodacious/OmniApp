@@ -214,3 +214,16 @@ code { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .boot__bar { height: 100%; width: 4%; background: var(--c-primary); transition: width 0.15s; }
 .boot--failed .boot__status { color: var(--c-danger-hover); font-weight: 600; }
 .boot--failed .boot__bar { background: var(--c-danger); }
+
+/* Tags (the chips themselves come from /omni.css) */
+.tag-filter:empty { display: none; }
+.tag-filter { margin: 0 0 14px; }
+button.tag-filter__tag, button.tag-filter__clear, button.tag__name {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+button.tag-filter__clear { background: transparent; padding: 0; }
+button.tag__name { background: transparent; color: inherit; font: inherit; padding: 0; }
+.wasm-item .todo-item__main { gap: 4px; }

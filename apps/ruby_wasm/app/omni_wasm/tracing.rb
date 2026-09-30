@@ -10,7 +10,7 @@ module OmniWasm
   # it, and what the adapter did underneath. Spans nest, so one action
   # reads as a small tree:
   #
-  #   TodoList#add("Buy milk")        use case
+  #   TodoService#add("Buy milk")     use case
   #     IdGenerator#next_id           port
   #     TodoRepository#save(Todo …)   port
   #       SQL INSERT INTO todos …     adapter
@@ -81,33 +81,49 @@ module OmniWasm
       id.to_s[0, 8]
     end
 
-    # Wraps the domain's TodoList: the calls the UI makes.
-    class TodoList
-      def initialize(todo_list, tracer)
-        @todo_list = todo_list
+    # Wraps the domain's TodoService: the calls the UI makes.
+    class TodoService
+      def initialize(service, tracer)
+        @service = service
         @tracer = tracer
       end
 
-      def todos
-        trace('todos') { |span| @todo_list.todos.tap { |todos| span.detail = "#{todos.size} todos" } }
+      def todos(tagged: nil)
+        call = tagged ? "todos(tagged: #{tagged.inspect})" : 'todos'
+        trace(call) { |span| @service.todos(tagged: tagged).tap { |todos| span.detail = "#{todos.size} todos" } }
       end
 
-      def add(title)
-        trace("add(#{title.inspect})") { |span| @todo_list.add(title).tap { |todo| span.detail = "Todo #{Traced.short(todo.id)}" } }
+      def tags
+        trace('tags') { |span| @service.tags.tap { |tags| span.detail = "#{tags.size} tags" } }
+      end
+
+      def add(title, tags = [])
+        call = tags.to_s.strip.empty? ? "add(#{title.inspect})" : "add(#{title.inspect}, #{tags.inspect})"
+        trace(call) { |span| @service.add(title, tags).tap { |todo| span.detail = "Todo #{Traced.short(todo.id)}" } }
       end
 
       def complete(id)
-        trace("complete(#{Traced.short(id)})") { @todo_list.complete(id) }
+        trace("complete(#{Traced.short(id)})") { @service.complete(id) }
+      end
+
+      def tag(id, tags)
+        trace("tag(#{Traced.short(id)}, #{tags.inspect})") do |span|
+          @service.tag(id, tags).tap { |todo| span.detail = todo.tags.map { |tag| "##{tag}" }.join(' ') }
+        end
+      end
+
+      def untag(id, tag)
+        trace("untag(#{Traced.short(id)}, #{tag.inspect})") { @service.untag(id, tag) }
       end
 
       def delete(id)
-        trace("delete(#{Traced.short(id)})") { @todo_list.delete(id) }
+        trace("delete(#{Traced.short(id)})") { @service.delete(id) }
       end
 
       private
 
       def trace(call)
-        @tracer.span(:use_case, "TodoList##{call}") do |span|
+        @tracer.span(:use_case, "TodoService##{call}") do |span|
           yield span
         rescue StandardError => e
           span.detail = "raised #{e.class}: #{e.message}"

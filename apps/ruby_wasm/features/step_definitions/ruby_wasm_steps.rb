@@ -101,7 +101,9 @@ end
 
 Then('the inspector shows these calls for it, in order:') do |table|
   expected = table.hashes.map { |row| [row['layer'], row['call']] }
-  expect(page).to have_css("#{testid('trace-entry')}[data-layer='use_case']", text: expected.first.last)
+  # Match on the title attribute: it holds the exact call, where the
+  # visible text collapses whitespace.
+  expect(page).to(have_css("#{testid('trace-entry')}[data-layer='use_case']") { |entry| entry['title'] == expected.first.last })
   entries = all(testid('trace-entry')).map { |entry| [entry['data-layer'], entry['title']] }
   start = entries.index { |layer, call| layer == 'use_case' && call == expected.first.last }
   finish = (start + 1...entries.size).find { |index| entries[index].first == 'use_case' } || entries.size
@@ -119,4 +121,38 @@ Then('every contract test passes') do
   # (Inside Capybara's DSL, `all` finds elements, so no `all` matcher here.)
   expect(results.map { |result| result['data-passed'] }.uniq).to eq(['true'])
   expect(find(testid('contract-summary')).text).to start_with("#{results.size}/#{results.size} passed")
+end
+
+When('I add a todo titled {string} tagged {string}') do |title, tags|
+  add_todo(title, tags: tags)
+end
+
+When('I tag the todo titled {string} with {string}') do |title, tags|
+  within(todo_item(title)) do
+    find(testid('todo-tag-input')).set(tags)
+    find(testid('todo-tag-submit')).click
+  end
+end
+
+When('I remove the tag {string} from the todo titled {string}') do |tag, title|
+  within(todo_item(title)) do
+    find("#{testid('todo-tag')}[data-tag='#{tag}'] #{testid('todo-untag-button')}").click
+  end
+end
+
+When('I filter by the tag {string}') do |tag|
+  find("#{testid('tag-filter-link')}[data-tag='#{tag}']").click
+end
+
+When('I stop filtering by tag') do
+  find(testid('tag-filter-clear')).click
+  expect(page).to have_no_css(testid('tag-filter-clear'))
+end
+
+Then('the todo titled {string} has the tags {string}') do |title, tags|
+  expected = tags.split(', ')
+  expect(page).to have_css("#{testid('todo-item')}[data-todo-id] #{testid('todo-tag')}[data-tag='#{expected.last}']")
+  item = todo_item(title)
+  expect(item).to have_css(testid('todo-tag'), count: expected.size)
+  expect(item.all(testid('todo-tag')).map { |tag| tag['data-tag'] }).to eq(expected)
 end

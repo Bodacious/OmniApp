@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'js'
-require_relative '../../../../domain/todo_list'
+require_relative '../../../../domain/todo_service'
 require_relative 'tracing'
 require_relative 'adapters/ruby_memory_todo_repository'
 require_relative 'adapters/sqlite_todo_repository'
@@ -16,7 +16,7 @@ module OmniWasm
   # inspector can show every call across the ports.
   #
   # Unlike the server apps, the persistence can change while the page
-  # runs: #use builds a new TodoList around another adapter. Each
+  # runs: #use builds a new TodoService around another adapter. Each
   # adapter is built once and kept, so switching back finds its todos
   # where you left them.
   class CompositionRoot
@@ -37,7 +37,7 @@ module OmniWasm
       'sqlite_local_storage' => ['SQLite (wasm)', 'localStorage']
     }.freeze
 
-    attr_reader :tracer, :persistence, :todo_list
+    attr_reader :tracer, :persistence, :todo_service
 
     def initialize(persistence)
       @tracer = Tracer.new
@@ -55,7 +55,7 @@ module OmniWasm
 
       @persistence = persistence
       repository = @repositories[persistence] ||= Traced::TodoRepository.new(build(persistence, tracer:), tracer)
-      @todo_list = Traced::TodoList.new(TodoList.new(repository:, id_generator: @id_generator), tracer)
+      @todo_service = Traced::TodoService.new(TodoService.new(repository:, id_generator: @id_generator), tracer)
     end
 
     def stack

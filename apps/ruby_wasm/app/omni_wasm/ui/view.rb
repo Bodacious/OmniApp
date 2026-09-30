@@ -44,10 +44,11 @@ module OmniWasm
         end.join
       end
 
-      def list(todos, filter, highlight_id)
+      def list(todos, filter, tag, highlight_id)
         if todos.empty?
-          message = filter == 'all' ? 'Nothing to do yet.' : "No #{filter} todos."
-          return %(<p class="todo-empty" data-testid="todo-empty">#{message}</p><ul data-testid="todo-list"></ul>)
+          described = [filter == 'all' ? nil : filter, 'todos', tag ? "tagged ##{tag}" : nil].compact.join(' ')
+          message = filter == 'all' && tag.nil? ? 'Nothing to do yet.' : "No #{described}."
+          return %(<p class="todo-empty" data-testid="todo-empty">#{h(message)}</p><ul data-testid="todo-list"></ul>)
         end
 
         items = todos.map { |todo| item(todo, todo.id == highlight_id) }.join
@@ -58,17 +59,50 @@ module OmniWasm
         classes = ['todo-item', 'wasm-item']
         classes << 'todo-item--completed' if todo.completed?
         classes << 'wasm-item--fresh' if fresh
-        check = if todo.completed?
-                  %(<span class="check check--done" data-testid="todo-done-marker" aria-label="Done">✓</span>)
-                else
-                  %(<button type="button" class="check" data-action="complete" data-id="#{h(todo.id)}" ) +
-                    %(data-testid="todo-complete-button" aria-label="Complete #{h(todo.title)}"></button>)
-                end
         %(<li class="#{classes.join(' ')}" data-testid="todo-item" data-todo-id="#{h(todo.id)}" ) +
-          %(data-completed="#{todo.completed?}">#{check}) +
+          %(data-completed="#{todo.completed?}">#{check(todo)}<span class="todo-item__main">) +
           %(<span class="todo-item__title" data-testid="todo-item-title">#{h(todo.title)}</span>) +
-          %(<button type="button" class="delete" data-action="delete" data-id="#{h(todo.id)}" ) +
+          %(<span class="todo-item__tags">#{todo.tags.map { |tag| chip(todo, tag) }.join}#{tag_form(todo)}</span>) +
+          %(</span><button type="button" class="delete" data-action="delete" data-id="#{h(todo.id)}" ) +
           %(data-testid="todo-delete-button" aria-label="Delete #{h(todo.title)}">×</button></li>)
+      end
+
+      def check(todo)
+        return %(<span class="check check--done" data-testid="todo-done-marker" aria-label="Done">✓</span>) if todo.completed?
+
+        %(<button type="button" class="check" data-action="complete" data-id="#{h(todo.id)}" ) +
+          %(data-testid="todo-complete-button" aria-label="Complete #{h(todo.title)}"></button>)
+      end
+
+      def chip(todo, tag)
+        %(<span class="tag" data-testid="todo-tag" data-tag="#{h(tag.name)}">) +
+          %(<button type="button" class="tag__name" data-action="filter-tag" data-tag="#{h(tag.name)}">##{h(tag.name)}</button>) +
+          %(<button type="button" class="tag__remove-button" data-action="untag" data-id="#{h(todo.id)}" ) +
+          %(data-tag="#{h(tag.name)}" data-testid="todo-untag-button" aria-label="Remove tag #{h(tag.name)}">×</button></span>)
+      end
+
+      def tag_form(todo)
+        %(<form class="tag-add" data-testid="todo-tag-form" data-id="#{h(todo.id)}">) +
+          %(<input class="tag-add__input" name="tags" type="text" placeholder="+ tag" autocomplete="off" ) +
+          %(aria-label="Add tags to #{h(todo.title)}" data-testid="todo-tag-input">) +
+          %(<button class="tag-add__button" type="submit" data-testid="todo-tag-submit">Tag</button></form>)
+      end
+
+      def tag_filter(tag_counts, current)
+        return '' if tag_counts.empty?
+
+        links = tag_counts.map do |count|
+          name = count.tag.name
+          selected = name == current
+          %(<button type="button" class="tag-filter__tag#{' tag-filter__tag--current' if selected}" ) +
+            %(data-action="filter-tag" data-tag="#{h(name)}" data-testid="tag-filter-link" aria-pressed="#{selected}">) +
+            %(##{h(name)} <span class="tag-filter__count">#{count.todo_count}</span></button>)
+        end
+        clear = if current
+                  %(<button type="button" class="tag-filter__clear" data-action="filter-tag" data-tag="" ) +
+                    %(data-testid="tag-filter-clear">Show all</button>)
+                end
+        %(<span class="tag-filter__label">Tags</span>#{links.join}#{clear})
       end
 
       def summary(active_count)
