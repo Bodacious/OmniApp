@@ -28,7 +28,3 @@ exclusions:
       bundle, so the Node app can only render the shared ERB templates
       (which Opal compiles ahead of time with Opal::ERB).
 
-  - app: opal_node
-    reason: >-
-      Not built yet. The Opal-on-Node app is the next step; this
-      exclusion comes out when it lands.

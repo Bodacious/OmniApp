@@ -37,7 +37,9 @@ when 'sinatra', 'rails'
 when 'opal_node'
   system('bundle', 'exec', 'ruby', 'apps/opal_node/build.rb', exception: false) ||
     abort('bin/omni: the Opal build failed')
-  exec({ 'HOST' => host, 'PORT' => port }, 'node', 'apps/opal_node/build/omni.js')
+  # node:sqlite still prints an ExperimentalWarning on Node 22.
+  exec({ 'HOST' => host, 'PORT' => port },
+       'node', '--disable-warning=ExperimentalWarning', 'apps/opal_node/build/omni.js')
 else
   abort "bin/omni: #{stack.app} is in config/stack_matrix.yml, but bin/omni doesn't know how to boot it"
 end
