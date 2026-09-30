@@ -1,0 +1,12 @@
+{
+  "name": "omni-ruby-wasm",
+  "private": true,
+  "description": "The Omni todo app: CRuby compiled to WebAssembly, running the domain in the browser.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@bjorn3/browser_wasi_shim": "0.4.2",
+    "@ruby/3.4-wasm-wasi": "2.10.1",
+    "@ruby/wasm-wasi": "2.10.1",
+    "@sqlite.org/sqlite-wasm": "3.53.4-build1"
+  }
+}

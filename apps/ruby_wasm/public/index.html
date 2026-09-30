@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Omni · Ruby in WebAssembly</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/omni.css">
+    <link rel="stylesheet" href="/app.css">
+    <script type="importmap">
+      {
+        "imports": {
+          "@bjorn3/browser_wasi_shim": "/vendor/@bjorn3/browser_wasi_shim/dist/index.js",
+          "@ruby/wasm-wasi": "/vendor/@ruby/wasm-wasi/dist/esm/index.js",
+          "@sqlite.org/sqlite-wasm": "/vendor/@sqlite.org/sqlite-wasm/dist/index.mjs"
+        }
+      }
+    </script>
+    <script type="module" src="/boot.js"></script>
+  </head>
+  <body>
+    <header class="app__header">
+      <div class="app__header-inner wasm-header">
+        <a class="app__brand" href="/">Omni <span class="app__brand-sub">in WebAssembly</span></a>
+        <p class="stack-badge" data-testid="stack-badge" data-region="badge" title="app / persistence / interface"></p>
+      </div>
+      <div class="runtime" data-region="runtime"></div>
+    </header>
+
+    <main class="wasm-layout">
+      <section class="panel todos-panel">
+        <h1 class="page__title">Todos</h1>
+        <form class="todo-form wasm-form" data-testid="todo-form" autocomplete="off">
+          <fieldset class="wasm-form__controls" data-region="controls" disabled>
+            <label class="todo-form__label" for="todo-title">Title</label>
+            <div class="todo-form__row">
+              <input class="todo-form__input" id="todo-title" name="title" type="text" placeholder="What needs doing?" data-testid="todo-title-input">
+              <button class="btn" type="submit" data-testid="todo-submit">Add todo</button>
+            </div>
+          </fieldset>
+          <div data-region="error"></div>
+        </form>
+        <nav class="filters" data-region="filters" aria-label="Filter todos"></nav>
+        <div data-region="list"></div>
+        <footer class="todos-panel__footer" data-region="summary"></footer>
+      </section>
+
+      <aside class="inspector">
+        <section class="panel">
+          <h2 class="panel__title">Inside the hexagon</h2>
+          <p class="panel__note">Ruby, compiled to WebAssembly, runs the same <code>domain/</code> files as the Rails, Sinatra and Node apps. Parts light up as each action passes through them.</p>
+          <svg class="hexagon" viewBox="0 36 600 178" role="img" aria-label="The UI calls the domain's use cases; the domain calls its ports; adapters implement the ports">
+            <line class="hexagon__wire" x1="150" y1="125" x2="195" y2="125" />
+            <line class="hexagon__wire" x1="352" y1="86" x2="440" y2="80" />
+            <line class="hexagon__wire" x1="352" y1="164" x2="440" y2="170" />
+
+            <g class="hexagon__part hexagon__adapter" data-part="ui">
+              <rect x="10" y="95" width="140" height="60" rx="10" />
+              <text x="80" y="121">DOM UI</text>
+              <text x="80" y="140" class="hexagon__sub">Ruby · js gem</text>
+            </g>
+
+            <g class="hexagon__part hexagon__domain" data-part="use-case">
+              <polygon points="195,125 240,47 330,47 375,125 330,203 240,203" />
+              <text x="285" y="105" class="hexagon__sub">domain/</text>
+              <text x="285" y="128" class="hexagon__strong">TodoList</text>
+              <text x="285" y="148" class="hexagon__sub">Todo · plain Ruby</text>
+            </g>
+
+            <g class="hexagon__part hexagon__port" data-part="port-repository">
+              <rect x="360" y="62" width="104" height="22" rx="11" />
+              <text x="412" y="77">TodoRepository</text>
+            </g>
+            <g class="hexagon__part hexagon__port" data-part="port-ids">
+              <rect x="360" y="166" width="104" height="22" rx="11" />
+              <text x="412" y="181">IdGenerator</text>
+            </g>
+
+            <g class="hexagon__part hexagon__adapter" data-part="adapter-repository">
+              <rect x="470" y="50" width="120" height="60" rx="10" />
+              <text x="530" y="76" data-region="adapter-name">SQLite (wasm)</text>
+              <text x="530" y="95" class="hexagon__sub" data-region="adapter-store">:memory:</text>
+            </g>
+            <g class="hexagon__part hexagon__adapter" data-part="adapter-ids">
+              <rect x="470" y="140" width="120" height="60" rx="10" />
+              <text x="530" y="166">Web Crypto</text>
+              <text x="530" y="185" class="hexagon__sub">randomUUID</text>
+            </g>
+          </svg>
+          <p class="panel__label">Persistence adapter <span class="panel__hint">(switch it while the app runs)</span></p>
+          <div class="segments" data-region="persistence" role="group" aria-label="Persistence adapter"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel__head">
+            <h2 class="panel__title">Calls across the ports</h2>
+            <button type="button" class="btn btn--ghost btn--small" data-action="clear-trace">Clear</button>
+          </div>
+          <ol class="trace" data-region="trace" data-testid="trace"></ol>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel__title">Port contract</h2>
+          <p class="panel__note">Runs <code>domain/test/support/todo_repository_contract.rb</code> (the same contract CI runs against the Sequel adapters) against the current adapter, with Minitest, inside the browser.</p>
+          <button type="button" class="btn" data-action="run-contract" data-testid="run-contract">Run the contract</button>
+          <div data-region="contract"></div>
+        </section>
+      </aside>
+    </main>
+
+    <div class="boot" data-region="boot">
+      <div class="boot__card">
+        <p class="boot__title">Booting Ruby in WebAssembly</p>
+        <p class="boot__status" data-boot-status>Loading…</p>
+        <div class="boot__track"><div class="boot__bar" data-boot-progress></div></div>
+      </div>
+    </div>
+  </body>
+</html>

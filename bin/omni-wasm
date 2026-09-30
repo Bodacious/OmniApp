@@ -1,0 +1,28 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Serves the ruby_wasm app: the todo app with CRuby, compiled to
+# WebAssembly, running the domain in your browser.
+#
+#   npm ci --prefix apps/ruby_wasm      # once: CRuby and SQLite, as WebAssembly
+#   bin/omni-wasm                       # then open http://127.0.0.1:9393
+#
+# It's not a cell of the stack matrix: the server only hands files to
+# the browser, which runs everything itself, so there's no server-side
+# stack for /health to describe. Its specs run with bin/omni-wasm-test.
+#
+# Optional: PORT (default 9393), HOST (default 127.0.0.1).
+
+ROOT = File.expand_path('..', __dir__)
+
+unless Dir.exist?(File.join(ROOT, 'apps/ruby_wasm/node_modules/@ruby/3.4-wasm-wasi'))
+  abort 'bin/omni-wasm: run `npm ci --prefix apps/ruby_wasm` first, to fetch CRuby and SQLite as WebAssembly'
+end
+
+host = ENV.fetch('HOST', '127.0.0.1')
+port = ENV.fetch('PORT', '9393')
+warn "bin/omni-wasm: serving the WebAssembly app on http://#{host}:#{port}"
+
+Dir.chdir(ROOT)
+exec('bundle', 'exec', 'puma', '--config', '-', '--workers', '0',
+     '--bind', "tcp://#{host}:#{port}", 'apps/ruby_wasm/config.ru')

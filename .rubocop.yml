@@ -3,6 +3,7 @@ AllCops:
   Exclude:
     - "apps/opal_node/node_modules/**/*"
     - "apps/opal_node/build/**/*"
+    - "apps/ruby_wasm/node_modules/**/*"
     - "vendor/**/*"
     - "tmp/**/*"
 

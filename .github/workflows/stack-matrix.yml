@@ -94,6 +94,35 @@ jobs:
       - name: Domain tests and the repository contract on every Ruby adapter
         run: bundle exec rake test
 
+  ruby-wasm:
+    name: ruby_wasm · browser
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install libpq-dev (for the pg gem)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libpq-dev
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: apps/ruby_wasm/package-lock.json
+      - name: Install CRuby and SQLite, compiled to WebAssembly
+        run: npm ci --prefix apps/ruby_wasm
+      - name: Run the browser specs against CRuby in WebAssembly
+        run: bin/omni-wasm-test
+      - name: Keep the server log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-log-ruby-wasm
+          path: tmp/omni-test/
+          if-no-files-found: ignore
+
   test:
     name: ${{ matrix.name }}
     needs: plan
@@ -148,7 +177,7 @@ jobs:
   matrix-green:
     name: matrix-green
     if: always()
-    needs: [plan, domain-purity, unit, test]
+    needs: [plan, domain-purity, unit, test, ruby-wasm]
     runs-on: ubuntu-24.04
     steps:
       - name: Check every job passed

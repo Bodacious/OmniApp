@@ -4,7 +4,8 @@ A to-do app that exists to show hexagonal (ports-and-adapters) architecture.
 The business logic in `domain/` is plain Ruby that depends on nothing. Around it
 sit three swappable axes: the app layer, the persistence adapter, and the
 interface (template language). The same domain files run unchanged in every
-combination, including compiled to JavaScript by Opal and run by Node.
+combination, including compiled to JavaScript by Opal and run by Node, and
+in your browser on CRuby compiled to WebAssembly.
 
 | Axis        | Values                              |
 |-------------|-------------------------------------|
@@ -36,8 +37,9 @@ apps/
   rails/                   Rails app layer (ActionController + ActionView only; no Active Record)
   opal_node/               Ruby compiled with Opal and run by Node, with its own adapters:
     app/omni_node/adapters/  node:sqlite (DatabaseSync), pg-native (querySync), node:crypto
+  ruby_wasm/               CRuby compiled to WebAssembly, in the browser (outside the matrix; see below)
 features/                  One set of Cucumber specs, run unchanged against every cell
-bin/                       omni, omni-test, omni-matrix, omni-domain-check
+bin/                       omni, omni-test, omni-matrix, omni-domain-check, omni-wasm, omni-wasm-test
 ```
 
 Each app layer only translates HTTP into use-case calls on `TodoList` and
@@ -136,6 +138,60 @@ bin/omni-domain-check                     # the domain purity checks
 Cuprite finds Chrome or Chromium on the usual paths. Set `BROWSER_PATH` if
 yours lives somewhere else. A failing run prints the tail of the server log,
 which is kept in `tmp/omni-test/`.
+
+## The WebAssembly app
+
+`apps/ruby_wasm` runs the whole app in your browser. Real CRuby 3.4, compiled
+to WebAssembly (`wasm32-wasi`), loads the same `domain/` files as every other
+app, using its own `require`. The server only hands over files; nothing runs
+server-side.
+
+```sh
+npm ci --prefix apps/ruby_wasm    # once: CRuby and SQLite, compiled to WebAssembly (about 100 MB)
+bin/omni-wasm                     # then open http://127.0.0.1:9393
+bin/omni-wasm-test                # its browser specs (apps/ruby_wasm/features)
+```
+
+How it boots:
+- `public/boot.js` starts SQLite, which is also compiled to WebAssembly.
+- It downloads CRuby (about 30 MB) and mounts this repo's Ruby files into
+  CRuby's virtual filesystem, laid out as on disk.
+- Then it requires `app/main.rb`. From there on everything is Ruby: the UI,
+  the composition root and the adapters all reach the browser through the
+  `js` gem.
+
+What the interface adds over the server-rendered pages:
+- **No page loads.** Adding, completing and deleting happen in place,
+  alongside All, Active and Completed filters and a live count.
+- **Swap the adapter while it runs.** There are three repository adapters for
+  the same port:
+  - a plain Ruby Hash;
+  - SQLite in memory;
+  - SQLite kept in localStorage, which survives a reload.
+- **Inside the hexagon.** A diagram lights up the parts each action passes
+  through. A live trace shows every call across the ports: the use case the
+  UI called, the port calls the domain made, and what the adapter did
+  underneath (the SQL it ran). The trace comes from tracing decorators the
+  composition root wraps around each port, so the domain can't tell they're
+  there.
+- **Run the port contract in the browser.** One button runs
+  `domain/test/support/todo_repository_contract.rb`, the same contract CI
+  runs against the Sequel adapters. It uses Minitest from CRuby's own stdlib
+  and runs against the selected adapter, on a scratch store.
+- **Ruby in the console.** `omniRuby("RUBY_PLATFORM")` in the browser console
+  evaluates Ruby in the page's VM.
+
+It isn't a cell of the stack matrix. The matrix specs drive a server-side
+stack through `/health` and `/__test__/reset`, and here there's no server-side
+stack. Its own specs cover the same behaviour (adding, the blank-title rule,
+completing, deleting), plus:
+- the filters;
+- the adapter switcher;
+- the trace;
+- the contract on all three adapters;
+- persistence across a reload.
+
+CI runs them in the `ruby_wasm · browser` job.
 
 ### Adding an adapter
 
