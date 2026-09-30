@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'todo'
+require 'model/todo'
 
 ##
 # The behaviour every Ports::TodoRepository adapter must provide (see
@@ -56,6 +56,39 @@ module TodoRepositoryContract
     assert_predicate repository.find('2'), :completed?
   end
 
+  def test_tags_round_trip
+    repository.save(todo('1', 'Buy milk', tags: 'urgent home'))
+
+    assert_equal %w[home urgent], repository.find('1').tags.map(&:name)
+  end
+
+  def test_all_returns_each_todos_own_tags
+    repository.save(todo('1', 'Buy milk', tags: 'home'))
+    repository.save(todo('2', 'File taxes', tags: 'work urgent'))
+    repository.save(todo('3', 'Nap'))
+
+    tags = repository.all.to_h { |stored| [stored.id, stored.tags.map(&:name)] }
+
+    assert_equal({ '1' => ['home'], '2' => %w[urgent work], '3' => [] }, tags)
+  end
+
+  def test_save_replaces_the_tags_too
+    repository.save(todo('1', 'Buy milk', tags: 'home urgent'))
+
+    repository.save(todo('1', 'Buy milk', tags: 'errands'))
+
+    assert_equal ['errands'], repository.find('1').tags.map(&:name)
+  end
+
+  def test_delete_removes_the_tags_with_the_todo
+    repository.save(todo('1', 'Buy milk', tags: 'home'))
+    repository.delete('1')
+
+    repository.save(todo('1', 'Buy milk'))
+
+    assert_empty repository.find('1').tags
+  end
+
   def test_delete_removes_the_todo_and_returns_true
     repository.save(todo('1', 'Buy milk'))
 
@@ -69,7 +102,7 @@ module TodoRepositoryContract
 
   private
 
-  def todo(id, title)
-    Todo.new(id: id, title: title)
+  def todo(id, title, tags: [])
+    Todo.new(id: id, title: title, tags: tags)
   end
 end

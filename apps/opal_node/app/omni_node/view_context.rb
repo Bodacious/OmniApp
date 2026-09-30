@@ -8,10 +8,12 @@ module OmniNode
   class ViewContext
     ESCAPES = { '&' => '&amp;', '<' => '&lt;', '>' => '&gt;', '"' => '&quot;', "'" => '&#39;' }.freeze
 
-    attr_reader :todos, :error, :stack
+    attr_reader :todos, :tags, :current_tag, :error, :stack
 
-    def initialize(todos:, stack:, error: nil)
+    def initialize(todos:, stack:, tags: [], current_tag: nil, error: nil)
       @todos = todos
+      @tags = tags
+      @current_tag = current_tag
       @stack = stack
       @error = error
     end

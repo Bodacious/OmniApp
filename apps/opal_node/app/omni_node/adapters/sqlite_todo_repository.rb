@@ -2,7 +2,7 @@
 
 # backtick_javascript: true
 
-require 'todo'
+require 'model/todo'
 require 'ports/todo_repository'
 require 'omni_node/node'
 
@@ -15,6 +15,9 @@ module OmniNode
     # One DatabaseSync on ':memory:' is one private in-memory database.
     # Node runs requests on a single thread, so this one connection
     # serves them all and every request sees the same data.
+    #
+    # Tags live in their own table, one row per tag, as in the Ruby
+    # adapter; saving a todo rewrites its tags in the same transaction.
     class SqliteTodoRepository
       include Ports::TodoRepository
 
@@ -24,7 +27,12 @@ module OmniNode
           id TEXT NOT NULL UNIQUE,
           title TEXT NOT NULL,
           completed INTEGER NOT NULL DEFAULT 0
-        )
+        );
+        CREATE TABLE IF NOT EXISTS todo_tags (
+          todo_id TEXT NOT NULL,
+          tag TEXT NOT NULL,
+          PRIMARY KEY (todo_id, tag)
+        );
       SQL
 
       def initialize(path = ':memory:')
@@ -39,43 +47,71 @@ module OmniNode
       end
 
       def all
+        tags = tags_by_todo(`#{prepare('SELECT todo_id, tag FROM todo_tags')}.all()`)
         rows = `#{prepare('SELECT id, title, completed FROM todos ORDER BY position')}.all()`
-        rows.map { |row| build(row) }
+        rows.map { |row| build(row, tags.fetch(`#{row}.id`, [])) }
       end
 
       def find(id)
         row = Node.to_ruby(`#{prepare('SELECT id, title, completed FROM todos WHERE id = ?')}.get(#{id.to_s})`)
-        row && build(row)
+        return nil unless row
+
+        tags = `#{prepare('SELECT todo_id, tag FROM todo_tags WHERE todo_id = ?')}.all(#{id.to_s})`
+        build(row, tags_by_todo(tags).fetch(id.to_s, []))
       end
 
       def save(todo)
-        statement = prepare(<<~SQL)
-          INSERT INTO todos (id, title, completed) VALUES (?, ?, ?)
-          ON CONFLICT (id) DO UPDATE SET title = excluded.title, completed = excluded.completed
-        SQL
-        `#{statement}.run(#{todo.id}, #{todo.title}, #{todo.completed? ? 1 : 0})`
+        transaction do
+          `#{prepare(UPSERT)}.run(#{todo.id}, #{todo.title}, #{todo.completed? ? 1 : 0})`
+          `#{prepare('DELETE FROM todo_tags WHERE todo_id = ?')}.run(#{todo.id})`
+          insert = prepare('INSERT INTO todo_tags (todo_id, tag) VALUES (?, ?)')
+          todo.tags.each { |tag| `#{insert}.run(#{todo.id}, #{tag.name})` }
+        end
         todo
       end
 
       def delete(id)
-        result = `#{prepare('DELETE FROM todos WHERE id = ?')}.run(#{id.to_s})`
-        `Number(#{result}.changes)` > 0
+        transaction do
+          `#{prepare('DELETE FROM todo_tags WHERE todo_id = ?')}.run(#{id.to_s})`
+          result = `#{prepare('DELETE FROM todos WHERE id = ?')}.run(#{id.to_s})`
+          `Number(#{result}.changes)` > 0
+        end
       end
 
       # Not part of the port: the composition root's test-only reset.
       def clear
-        `#{@database}.exec('DELETE FROM todos')`
+        `#{@database}.exec('DELETE FROM todo_tags; DELETE FROM todos;')`
         nil
       end
 
       private
 
+      UPSERT = <<~SQL
+        INSERT INTO todos (id, title, completed) VALUES (?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET title = excluded.title, completed = excluded.completed
+      SQL
+
+      def transaction
+        `#{@database}.exec('BEGIN')`
+        result = yield
+        `#{@database}.exec('COMMIT')`
+        result
+      rescue Exception # rubocop:disable Lint/RescueException -- JS errors from SQLite too
+        `#{@database}.exec('ROLLBACK')`
+        raise
+      end
+
       def prepare(sql)
         `#{@database}.prepare(#{sql})`
       end
 
-      def build(row)
-        Todo.new(id: `#{row}.id`, title: `#{row}.title`, completed: `#{row}.completed` == 1)
+      # { todo id => [tag names] } from JS rows of todo_id and tag.
+      def tags_by_todo(rows)
+        rows.each_with_object({}) { |row, tags| (tags[`#{row}.todo_id`] ||= []) << `#{row}.tag` }
+      end
+
+      def build(row, tag_names)
+        Todo.new(id: `#{row}.id`, title: `#{row}.title`, completed: `#{row}.completed` == 1, tags: tag_names)
       end
     end
   end

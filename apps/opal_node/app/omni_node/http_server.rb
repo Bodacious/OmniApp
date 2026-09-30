@@ -36,9 +36,10 @@ module OmniNode
     def respond(request, response, body)
       started = `Date.now()`
       verb = `#{request}.method`
-      path = `new URL(#{request}.url, 'http://localhost').pathname`
+      url = `new URL(#{request}.url, 'http://localhost')`
+      path = `#{url}.pathname`
       result = begin
-        @router.call(Request.new(verb, path, form(body)))
+        @router.call(Request.new(verb, path, params(`#{url}.searchParams`), form(body)))
       rescue Exception => e # rubocop:disable Lint/RescueException -- JS errors too; keep serving
         $stderr.puts "#{e.class}: #{e.message}"
         Response.new(500, { 'content-type' => 'text/plain' }, 'Internal Server Error')
@@ -49,8 +50,12 @@ module OmniNode
 
     # An application/x-www-form-urlencoded body, as a Hash.
     def form(body)
-      params = `new URLSearchParams(#{body})`
-      pairs = `Array.from(#{params}.entries())`
+      params(`new URLSearchParams(#{body})`)
+    end
+
+    # URLSearchParams as a Hash of strings (the last value wins).
+    def params(search_params)
+      pairs = `Array.from(#{search_params}.entries())`
       pairs.to_h { |pair| [`#{pair}[0]`, `#{pair}[1]`] }
     end
 

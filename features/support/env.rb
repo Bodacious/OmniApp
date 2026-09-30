@@ -34,11 +34,16 @@ module TodoPage
     find(testid('todo-item-title'), exact_text: title).ancestor(testid('todo-item'))
   end
 
-  def add_todo(title)
+  def add_todo(title, tags: nil)
     within(testid('todo-form')) do
       fill_in 'Title', with: title
+      fill_in 'Tags', with: tags if tags
       click_button 'Add todo'
     end
+  end
+
+  def tag_names(item)
+    item.all(testid('todo-tag')).map { |tag| tag['data-tag'] }
   end
 
   def complete_todo(title)

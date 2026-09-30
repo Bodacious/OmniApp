@@ -20,11 +20,16 @@ module Ports
   # [all]
   #   Every stored Todo as an Array, in the order they were first
   #   saved. An empty Array when there are none.
+  #
+  # Todos come back exactly as they were saved: same id, title,
+  # completed state and tags. How an adapter stores tags (a join table,
+  # a column, a Hash) is its own business.
   # [find(id)]
   #   The stored Todo with this id, or nil.
   # [save(todo)]
-  #   Stores +todo+. If a todo with the same id is already stored, it
-  #   is replaced and keeps its place in #all. Returns +todo+.
+  #   Stores +todo+, with its tags. If a todo with the same id is
+  #   already stored, it is replaced, tags and all, and keeps its place
+  #   in #all. Returns +todo+.
   # [delete(id)]
   #   Removes the todo with this id. Returns true if one was removed,
   #   false if there was none.

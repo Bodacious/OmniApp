@@ -46,18 +46,29 @@ SMOKE = <<~RUBY
     def next_id; @count += 1; "smoke-\#{@count}"; end
   end
 
-  list = TodoList.new(repository: SmokeRepository.new, id_generator: SmokeIds.new)
-  milk = list.add('  Buy milk ')
-  list.add('Walk the dog')
-  list.complete(milk.id)
-  list.delete('smoke-2')
+  service = TodoService.new(repository: SmokeRepository.new, id_generator: SmokeIds.new)
+  milk = service.add('  Buy milk ', 'Errands, #Home')
+  service.add('Walk the dog', 'home')
+  service.complete(milk.id)
+  service.tag(milk.id, 'urgent')
+  service.untag(milk.id, 'errands')
+  service.delete('smoke-2')
+  ['   ', ['Buy milk', 'not ok!']].each do |title, tags|
+    begin
+      service.add(title, tags || [])
+      raise "accepted invalid input: \#{title.inspect} \#{tags.inspect}"
+    rescue InvalidInput
+    end
+  end
   begin
-    list.add('   ')
-    raise 'a blank title was accepted'
+    service.tag(milk.id, 'a b c d')
+    raise 'accepted a sixth tag'
   rescue Todo::Invalid
   end
-  todos = list.todos.map { |todo| [todo.id, todo.title, todo.completed?] }
-  raise "unexpected todos: \#{todos.inspect}" unless todos == [['smoke-1', 'Buy milk', true]]
+  todos = service.todos(tagged: 'HOME').map { |todo| [todo.id, todo.title, todo.completed?, todo.tags.map(&:name)] }
+  raise "unexpected todos: \#{todos.inspect}" unless todos == [['smoke-1', 'Buy milk', true, %w[home urgent]]]
+  counts = service.tags.map { |count| [count.tag.name, count.todo_count] }
+  raise "unexpected tag counts: \#{counts.inspect}" unless counts == [['home', 1], ['urgent', 1]]
   puts 'Opal: domain compiled and every use case ran'
 RUBY
 

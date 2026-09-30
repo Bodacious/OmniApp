@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'todo_list'
+require 'todo_service'
 require 'omni_node/node'
 require 'omni_node/view_context'
 require 'omni_node/adapters/sqlite_todo_repository'
@@ -59,7 +59,7 @@ module OmniNode
       value
     end
 
-    attr_reader :todo_list, :stack
+    attr_reader :todo_service, :stack
 
     def initialize(stack, env)
       connect = PERSISTENCE.fetch(stack.persistence) do
@@ -76,7 +76,7 @@ module OmniNode
       @template = Template["omni/#{stack.interface}/index"]
       raise StackError, "opal_node has no compiled template for interface #{stack.interface}" unless @template
 
-      @todo_list = TodoList.new(repository: @repository, id_generator: Adapters::CryptoIdGenerator.new)
+      @todo_service = TodoService.new(repository: @repository, id_generator: Adapters::CryptoIdGenerator.new)
       @test_mode = env.call('OMNI_ENV') == 'test'
       # What is running, read back from what was built.
       @stack = Stack.new(APP, @repository.persistence_name, stack.interface)
@@ -97,8 +97,17 @@ module OmniNode
       @repository.clear
     end
 
-    def render_page(error: nil)
-      @template.render(ViewContext.new(todos: todo_list.todos, stack: stack, error: error))
+    # The page, with only the todos tagged +tag+ if one is given. A
+    # malformed +tag+ shows everything, with the domain's message.
+    def render_page(error: nil, tag: nil)
+      begin
+        current_tag = tag.nil? || tag.empty? ? nil : Tag.new(tag).name
+      rescue InvalidInput => e
+        current_tag = nil
+        error ||= e.message
+      end
+      @template.render(ViewContext.new(todos: todo_service.todos(tagged: current_tag), tags: todo_service.tags,
+                                       current_tag: current_tag, stack: stack, error: error))
     end
   end
 end

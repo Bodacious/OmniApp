@@ -6,6 +6,8 @@ Rails.application.routes.draw do
   root 'todos#index'
   post '/todos', to: 'todos#create'
   post '/todos/:id/complete', to: 'todos#complete'
+  post '/todos/:id/tags', to: 'todos#tag'
+  post '/todos/:id/tags/:tag/delete', to: 'todos#untag'
   post '/todos/:id/delete', to: 'todos#destroy'
   get '/health', to: 'todos#health'
 

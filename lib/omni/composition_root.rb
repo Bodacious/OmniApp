@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'matrix'
-require_relative '../../domain/todo_list'
+require_relative '../../domain/todo_service'
 require_relative '../../adapters/persistence/sql'
 require_relative '../../adapters/ids/secure_random_id_generator'
 require_relative '../../adapters/interface/templates'
@@ -12,7 +12,7 @@ module Omni
   # The composition root for the Ruby app layers, Rails and Sinatra:
   # the one place that reads the stack from the environment, builds the
   # adapters it names and hands them to the domain. An app layer gets a
-  # TodoList to call, a template to render and nothing else.
+  # TodoService to call, a template to render and nothing else.
   class CompositionRoot
     ##
     # Wires up the stack selected by OMNI_APP, OMNI_PERSISTENCE and
@@ -32,13 +32,13 @@ module Omni
       raise StackError, e.message
     end
 
-    attr_reader :todo_list, :template_path
+    attr_reader :todo_service, :template_path
 
     def initialize(app:, stack:, env:)
       @app = app
       @repository = Adapters::Persistence::Sql.todo_repository(stack.persistence, env)
-      @todo_list = TodoList.new(repository: @repository,
-                                id_generator: Adapters::Ids::SecureRandomIdGenerator.new)
+      @todo_service = TodoService.new(repository: @repository,
+                                      id_generator: Adapters::Ids::SecureRandomIdGenerator.new)
       @template_path = Adapters::Interface::Templates.page(stack.interface)
       @test_mode = env['OMNI_ENV'] == 'test'
     end
@@ -79,9 +79,20 @@ module Omni
       end
     end
 
-    def view_context(error: nil, hidden_fields: '')
-      Adapters::Interface::ViewContext.new(todos: todo_list.todos, stack: stack,
-                                           error: error, hidden_fields: hidden_fields)
+    ##
+    # What the page template needs: the todos (only those with +tag+,
+    # if one is given), every tag in use, and any error. A malformed
+    # +tag+ shows the unfiltered list with the domain's message instead.
+    def view_context(error: nil, tag: nil, hidden_fields: '')
+      begin
+        current_tag = tag.to_s.empty? ? nil : Tag.new(tag).name
+      rescue InvalidInput => e
+        current_tag = nil
+        error ||= e.message
+      end
+      Adapters::Interface::ViewContext.new(todos: todo_service.todos(tagged: current_tag), tags: todo_service.tags,
+                                           current_tag: current_tag, stack: stack, error: error,
+                                           hidden_fields: hidden_fields)
     end
   end
 end

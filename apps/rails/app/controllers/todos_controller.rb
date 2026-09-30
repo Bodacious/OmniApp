@@ -1,37 +1,40 @@
 # frozen_string_literal: true
 
 ##
-# The Rails app layer: HTTP in, use case calls on the domain's TodoList,
-# a shared template out. The template comes from adapters/interface/,
-# chosen by the composition root; Rails only adds its CSRF token.
+# The Rails app layer: HTTP in, use case calls on the domain's
+# TodoService, a shared template out. The template comes from
+# adapters/interface/, chosen by the composition root; Rails only adds
+# its CSRF token.
 class TodosController < ActionController::Base
   protect_from_forgery with: :exception
 
   prepend_view_path File.dirname(Rails.configuration.x.omni.template_path)
 
   def index
-    render_page
+    render_page(tag: string_param(:tag))
   end
 
   def create
-    todo_list.add(title_param)
+    todo_service.add(string_param(:title), string_param(:tags))
     redirect_to '/', status: :see_other
-  rescue Todo::Invalid => e
+  rescue InvalidInput => e
     render_page(error: e.message, status: :unprocessable_content)
   end
 
   def complete
-    todo_list.complete(params[:id])
-    redirect_to '/', status: :see_other
-  rescue TodoList::NotFound
-    render plain: 'No such todo', status: :not_found
+    change { todo_service.complete(params[:id]) }
+  end
+
+  def tag
+    change { todo_service.tag(params[:id], string_param(:tags)) }
+  end
+
+  def untag
+    change { todo_service.untag(params[:id], params[:tag]) }
   end
 
   def destroy
-    todo_list.delete(params[:id])
-    redirect_to '/', status: :see_other
-  rescue TodoList::NotFound
-    render plain: 'No such todo', status: :not_found
+    change { todo_service.delete(params[:id]) }
   end
 
   def health
@@ -44,18 +47,30 @@ class TodosController < ActionController::Base
     Rails.configuration.x.omni
   end
 
-  def todo_list
-    omni.todo_list
+  def todo_service
+    omni.todo_service
   end
 
-  # A scalar title or nil. Blank is for the domain to judge, so this
-  # doesn't use expect/require, which would reject it first.
-  def title_param
-    params.permit(:title)[:title]
+  # Runs a use case on an existing todo, then back to the list.
+  def change
+    yield
+    redirect_to '/', status: :see_other
+  rescue InvalidInput => e
+    render_page(error: e.message, status: :unprocessable_content)
+  rescue TodoService::NotFound
+    render plain: 'No such todo', status: :not_found
   end
 
-  def render_page(error: nil, status: :ok)
-    context = omni.view_context(error: error, hidden_fields: csrf_hidden_field)
+  # A scalar string or nil, as strong params would allow. Whether it's
+  # valid (blank titles included) is for the domain to judge, so this
+  # doesn't use expect/require, which would reject blanks first.
+  def string_param(name)
+    value = params[name]
+    value if value.is_a?(String)
+  end
+
+  def render_page(error: nil, tag: nil, status: :ok)
+    context = omni.view_context(error: error, tag: tag, hidden_fields: csrf_hidden_field)
     locals = context.locals.merge(stylesheet: context.stylesheet.html_safe) # rubocop:disable Rails/OutputSafety
     render template: 'index', layout: false, locals: locals, status: status
   end

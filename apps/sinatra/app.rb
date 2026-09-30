@@ -9,7 +9,7 @@ require_relative '../../lib/omni/composition_root'
 module Omni
   ##
   # The Sinatra app layer: HTTP in, use case calls on the domain's
-  # TodoList, a shared template out. Everything else comes from the
+  # TodoService, a shared template out. Everything else comes from the
   # composition root.
   class SinatraApp < Sinatra::Base
     NAME = 'sinatra'
@@ -22,34 +22,36 @@ module Omni
 
     def self.compose(composition)
       set :composition, composition
-      set :page, Tilt.new(composition.template_path)
+      set :page, Tilt.new(composition.template_path, default_encoding: 'UTF-8')
       self
     end
 
     get '/' do
-      render_page
+      render_page(tag: string_param('tag'))
     end
 
     post '/todos' do
-      todo_list.add(title_param)
+      todo_service.add(string_param('title'), string_param('tags'))
       redirect '/', 303
-    rescue Todo::Invalid => e
+    rescue InvalidInput => e
       status 422
       render_page(error: e.message)
     end
 
     post '/todos/:id/complete' do
-      todo_list.complete(params['id'])
-      redirect '/', 303
-    rescue TodoList::NotFound
-      halt 404, 'No such todo'
+      change { todo_service.complete(params['id']) }
+    end
+
+    post '/todos/:id/tags' do
+      change { todo_service.tag(params['id'], string_param('tags')) }
+    end
+
+    post '/todos/:id/tags/:tag/delete' do
+      change { todo_service.untag(params['id'], params['tag']) }
     end
 
     post '/todos/:id/delete' do
-      todo_list.delete(params['id'])
-      redirect '/', 303
-    rescue TodoList::NotFound
-      halt 404, 'No such todo'
+      change { todo_service.delete(params['id']) }
     end
 
     get '/health' do
@@ -59,19 +61,30 @@ module Omni
 
     private
 
-    def todo_list
-      settings.composition.todo_list
+    def todo_service
+      settings.composition.todo_service
     end
 
-    # A string title or nil (e.g. title[]=x arrives as an Array). Blank
-    # is for the domain to judge.
-    def title_param
-      title = params['title']
-      title if title.is_a?(String)
+    # Runs a use case on an existing todo, then back to the list.
+    def change
+      yield
+      redirect '/', 303
+    rescue InvalidInput => e
+      status 422
+      render_page(error: e.message)
+    rescue TodoService::NotFound
+      halt 404, 'No such todo'
     end
 
-    def render_page(error: nil)
-      settings.page.render(settings.composition.view_context(error: error))
+    # A string parameter or nil (e.g. title[]=x arrives as an Array).
+    # Whether it's valid is for the domain to judge.
+    def string_param(name)
+      value = params[name]
+      value if value.is_a?(String)
+    end
+
+    def render_page(error: nil, tag: nil)
+      settings.page.render(settings.composition.view_context(error: error, tag: tag))
     end
   end
 end

@@ -8,7 +8,9 @@ module Adapters
     # Everything the shared templates can see. The templates use only
     # these names, so any app layer can render them by providing them:
     #
-    # [todos]         the domain's Todo objects, oldest first
+    # [todos]         the domain's Todo objects to show, oldest first
+    # [tags]          every tag in use, as TodoService::TagCounts
+    # [current_tag]   the tag the list is filtered by, or nil
     # [error]         a message to show, or nil
     # [stack]         the running stack (app, persistence, interface)
     # [hidden_fields] raw HTML added to every form; Rails puts its CSRF
@@ -32,10 +34,13 @@ module Adapters
         @stylesheet ||= File.read(STYLESHEET_PATH)
       end
 
-      attr_reader :todos, :error, :stack, :hidden_fields, :stylesheet
+      attr_reader :todos, :tags, :current_tag, :error, :stack, :hidden_fields, :stylesheet
 
-      def initialize(todos:, stack:, error: nil, hidden_fields: '', stylesheet: self.class.stylesheet)
+      def initialize(todos:, stack:, tags: [], current_tag: nil, error: nil, hidden_fields: '',
+                     stylesheet: self.class.stylesheet)
         @todos = todos
+        @tags = tags
+        @current_tag = current_tag
         @error = error
         @stack = stack
         @hidden_fields = hidden_fields
@@ -47,7 +52,8 @@ module Adapters
       end
 
       def locals
-        { todos: todos, error: error, stack: stack, hidden_fields: hidden_fields, stylesheet: stylesheet }
+        { todos: todos, tags: tags, current_tag: current_tag, error: error, stack: stack,
+          hidden_fields: hidden_fields, stylesheet: stylesheet }
       end
     end
   end

@@ -24,22 +24,57 @@
       <h1 class="page__title">Todos</h1>
       <form class="todo-form" data-testid="todo-form" action="/todos" method="post">
         <%= hidden_fields %>
-        <label class="todo-form__label" for="todo-title">Title</label>
         <div class="todo-form__row">
-          <input class="todo-form__input" id="todo-title" name="title" type="text" placeholder="e.g. Buy milk" autocomplete="off" data-testid="todo-title-input">
+          <div class="todo-form__field">
+            <label class="todo-form__label" for="todo-title">Title</label>
+            <input class="todo-form__input" id="todo-title" name="title" type="text" placeholder="e.g. Buy milk" autocomplete="off" data-testid="todo-title-input">
+          </div>
+          <div class="todo-form__field todo-form__field--tags">
+            <label class="todo-form__label" for="todo-tags">Tags</label>
+            <input class="todo-form__input" id="todo-tags" name="tags" type="text" placeholder="e.g. home, urgent" autocomplete="off" data-testid="todo-tags-input">
+          </div>
           <button class="btn" type="submit" data-testid="todo-submit">Add todo</button>
         </div>
         <% if error %>
         <p class="todo-form__error" role="alert" data-testid="todo-error"><%= h(error) %></p>
         <% end %>
       </form>
+      <% if tags.any? %>
+      <nav class="tag-filter" data-testid="tag-filter" aria-label="Filter by tag">
+        <span class="tag-filter__label">Tags</span>
+        <% tags.each do |tag_count| %>
+        <a class="tag-filter__tag<%= tag_count.tag.name == current_tag ? ' tag-filter__tag--current' : '' %>" href="/?tag=<%= h(tag_count.tag.name) %>" data-testid="tag-filter-link" data-tag="<%= h(tag_count.tag.name) %>">#<%= h(tag_count.tag.name) %> <span class="tag-filter__count"><%= tag_count.todo_count %></span></a>
+        <% end %>
+        <% if current_tag %>
+        <a class="tag-filter__clear" href="/" data-testid="tag-filter-clear">Show all</a>
+        <% end %>
+      </nav>
+      <% end %>
       <% if todos.empty? %>
-      <p class="todo-empty" data-testid="todo-empty">Nothing to do yet.</p>
+      <p class="todo-empty" data-testid="todo-empty"><% if current_tag %>No todos tagged #<%= h(current_tag) %>.<% else %>Nothing to do yet.<% end %></p>
       <% end %>
       <ul class="todo-list" data-testid="todo-list">
         <% todos.each do |todo| %>
         <li class="todo-item<%= todo.completed? ? ' todo-item--completed' : '' %>" data-testid="todo-item" data-todo-id="<%= h(todo.id) %>" data-completed="<%= todo.completed? %>">
-          <span class="todo-item__title" data-testid="todo-item-title"><%= h(todo.title) %></span>
+          <span class="todo-item__main">
+            <span class="todo-item__title" data-testid="todo-item-title"><%= h(todo.title) %></span>
+            <span class="todo-item__tags">
+              <% todo.tags.each do |tag| %>
+              <span class="tag" data-testid="todo-tag" data-tag="<%= h(tag.name) %>">
+                <a class="tag__name" href="/?tag=<%= h(tag.name) %>">#<%= h(tag.name) %></a>
+                <form class="tag__remove" action="/todos/<%= h(todo.id) %>/tags/<%= h(tag.name) %>/delete" method="post">
+                  <%= hidden_fields %>
+                  <button class="tag__remove-button" type="submit" aria-label="Remove tag <%= h(tag.name) %>" data-testid="todo-untag-button">&times;</button>
+                </form>
+              </span>
+              <% end %>
+              <form class="tag-add" action="/todos/<%= h(todo.id) %>/tags" method="post" data-testid="todo-tag-form">
+                <%= hidden_fields %>
+                <input class="tag-add__input" name="tags" type="text" placeholder="+ tag" aria-label="Add tags to <%= h(todo.title) %>" autocomplete="off" data-testid="todo-tag-input">
+                <button class="tag-add__button" type="submit" data-testid="todo-tag-submit">Tag</button>
+              </form>
+            </span>
+          </span>
           <span class="todo-item__controls">
             <% if todo.completed? %>
             <span class="todo-item__done" data-testid="todo-done-marker">Done</span>
