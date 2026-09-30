@@ -21,6 +21,9 @@ module OmniRails
     config.public_file_server.enabled = false
     config.logger = ActiveSupport::TaggedLogging.logger($stdout)
     config.log_level = :info
+    config.log_tags = [:request_id]
+    # bin/omni-test and the specs poll /health; keep it out of the log.
+    config.silence_healthcheck_path = '/health'
 
     # Forms carry Rails' CSRF token via the templates' hidden_fields.
     config.action_controller.allow_forgery_protection = true

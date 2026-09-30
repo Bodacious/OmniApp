@@ -145,17 +145,3 @@ which is kept in `tmp/omni-test/`.
    - persistence: `adapters/persistence/sql.rb`, or `CompositionRoot::PERSISTENCE` in `apps/opal_node`;
    - interface: add a template directory in `adapters/interface/`.
 3. Add its name to `config/stack_matrix.yml`. Every script and the CI matrix pick it up from there.
-
-## Legacy code
-
-Four directories hold the earlier, list-based version of the app. None of them
-is part of the stack matrix:
-- `sinatra_app/`
-- `rails_app/`
-- `browser_app/` (Opal in the browser, with localStorage)
-- `persistence/`
-
-The `List`/`ListItem` model in `domain/models`, `domain/repositories` and
-`domain/lib` belongs to that version too. The domain purity check still covers
-those files, and their tests run under `bundle exec rake legacy_test`, which is
-what the `test` workflow runs. They can be deleted once nothing needs them.

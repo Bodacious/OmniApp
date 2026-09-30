@@ -1,12 +1,5 @@
 # frozen_string_literal: true
 
-ENV['RACK_ENV'] = 'test'
-
-require 'bundler/setup'
-Bundler.require(:default, :test)
-
+# The domain's tests, and the adapters' contract tests, need nothing but
+# Minitest.
 require 'minitest/autorun'
-require 'mocha/minitest'
-
-require 'support/assertions'
-Minitest::Test.include(Assertions)

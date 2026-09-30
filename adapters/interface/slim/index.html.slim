@@ -8,6 +8,7 @@ html lang="en"
     meta charset="utf-8"
     meta name="viewport" content="width=device-width, initial-scale=1"
     title Omni todos
+    link rel="icon" href="data:,"
     style == stylesheet
   body
     header.app__header
@@ -25,7 +26,7 @@ html lang="en"
         == hidden_fields
         label.todo-form__label for="todo-title" Title
         .todo-form__row
-          input.todo-form__input id="todo-title" name="title" type="text" autocomplete="off" data-testid="todo-title-input"
+          input.todo-form__input id="todo-title" name="title" type="text" placeholder="e.g. Buy milk" autocomplete="off" data-testid="todo-title-input"
           button.btn type="submit" data-testid="todo-submit" Add todo
         - if error
           p.todo-form__error role="alert" data-testid="todo-error" = error

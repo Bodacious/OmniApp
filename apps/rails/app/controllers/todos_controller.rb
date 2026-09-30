@@ -14,7 +14,7 @@ class TodosController < ActionController::Base
   end
 
   def create
-    todo_list.add(params[:title])
+    todo_list.add(title_param)
     redirect_to '/', status: :see_other
   rescue Todo::Invalid => e
     render_page(error: e.message, status: :unprocessable_content)
@@ -24,14 +24,14 @@ class TodosController < ActionController::Base
     todo_list.complete(params[:id])
     redirect_to '/', status: :see_other
   rescue TodoList::NotFound
-    head :not_found
+    render plain: 'No such todo', status: :not_found
   end
 
   def destroy
     todo_list.delete(params[:id])
     redirect_to '/', status: :see_other
   rescue TodoList::NotFound
-    head :not_found
+    render plain: 'No such todo', status: :not_found
   end
 
   def health
@@ -46,6 +46,12 @@ class TodosController < ActionController::Base
 
   def todo_list
     omni.todo_list
+  end
+
+  # A scalar title or nil. Blank is for the domain to judge, so this
+  # doesn't use expect/require, which would reject it first.
+  def title_param
+    params.permit(:title)[:title]
   end
 
   def render_page(error: nil, status: :ok)

@@ -31,7 +31,7 @@ module Omni
     end
 
     post '/todos' do
-      todo_list.add(params['title'])
+      todo_list.add(title_param)
       redirect '/', 303
     rescue Todo::Invalid => e
       status 422
@@ -61,6 +61,13 @@ module Omni
 
     def todo_list
       settings.composition.todo_list
+    end
+
+    # A string title or nil (e.g. title[]=x arrives as an Array). Blank
+    # is for the domain to judge.
+    def title_param
+      title = params['title']
+      title if title.is_a?(String)
     end
 
     def render_page(error: nil)

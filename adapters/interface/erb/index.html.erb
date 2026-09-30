@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Omni todos</title>
+    <link rel="icon" href="data:,">
     <style><%= stylesheet %></style>
   </head>
   <body>
@@ -25,7 +26,7 @@
         <%= hidden_fields %>
         <label class="todo-form__label" for="todo-title">Title</label>
         <div class="todo-form__row">
-          <input class="todo-form__input" id="todo-title" name="title" type="text" autocomplete="off" data-testid="todo-title-input">
+          <input class="todo-form__input" id="todo-title" name="title" type="text" placeholder="e.g. Buy milk" autocomplete="off" data-testid="todo-title-input">
           <button class="btn" type="submit" data-testid="todo-submit">Add todo</button>
         </div>
         <% if error %>

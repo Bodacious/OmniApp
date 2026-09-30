@@ -2,40 +2,12 @@
 
 source 'https://rubygems.org'
 
-ruby file: './.ruby-version'
+ruby file: '.ruby-version'
 
-gem 'rake', '~> 13.2'
+# The domain (domain/) needs no gems at all.
 
 gem 'puma', '~> 8.0'
-
-group :rails do
-  # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-  gem 'rails', '~> 8.0.1'
-  # Use JavaScript with ESM import maps [https://github.com/rails/importmap-rails]
-  gem 'importmap-rails'
-  # Build JSON APIs with ease [https://github.com/rails/jbuilder]
-  gem 'jbuilder'
-
-  # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
-  gem 'tzinfo-data', platforms: %i[windows jruby]
-
-  # Reduces boot times through caching; required in config/boot.rb
-  gem 'bootsnap', require: false
-
-  # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
-  gem 'thruster', require: false
-
-  gem 'slim-rails'
-end
-
-group :sinatra do
-  gem 'nio4r', '~> 2.7'
-  gem 'rack-unreloader', '~> 2.1'
-  gem 'rackup', '~> 2.2'
-  gem 'sinatra', '~> 4.1'
-  gem 'sinatra-reloader', '~> 1.0', require: 'sinatra/reloader'
-  gem 'slim', '~> 5.2'
-end
+gem 'rake', '~> 13.2'
 
 # The Ruby persistence adapters (adapters/persistence/), shared by the
 # Rails and Sinatra apps.
@@ -45,7 +17,23 @@ group :persistence do
   gem 'sqlite3', '~> 2.5'
 end
 
-group :browser do
+# apps/rails: only the parts of Rails an HTTP app layer needs. No
+# Active Record; persistence comes from adapters/persistence/.
+group :rails do
+  gem 'actionpack', '~> 8.0.1'
+  gem 'actionview', '~> 8.0.1'
+  gem 'railties', '~> 8.0.1'
+  gem 'slim-rails', '~> 4.0'
+end
+
+# apps/sinatra. Slim is also what renders adapters/interface/slim/.
+group :sinatra do
+  gem 'sinatra', '~> 4.1'
+  gem 'slim', '~> 5.2'
+end
+
+# apps/opal_node, and bin/omni-domain-check's Opal compile of domain/.
+group :opal do
   gem 'opal', '~> 1.8'
 end
 
@@ -53,25 +41,16 @@ group :test do
   gem 'capybara', '~> 3.40'
   gem 'cucumber', '~> 11.1', require: false
   gem 'cuprite', '~> 0.17', require: false
-  gem 'rspec-expectations', '~> 3.13', require: false
-  gem 'difftastic'
-  gem 'launchy', '~> 3.1'
   gem 'minitest', '~> 5.25'
-  gem 'minitest-difftastic', '~> 0.1'
-  gem 'mocha', '~> 2.7'
-  gem 'mutex_m', '~> 0.3'
-  gem 'rack-test', '~> 2.2'
-  gem 'selenium-webdriver', '~> 4.28'
+  gem 'rspec-expectations', '~> 3.13', require: false
 end
 
 group :housekeeping do
   gem 'pessimize', '~> 0.5'
-  gem 'rubocop', '~> 1.70'
-  gem 'rubocop-capybara'
-  gem 'rubocop-minitest'
-  gem 'rubocop-rails'
-  gem 'rubocop-rake'
-  gem 'rubocop-sequel'
+  gem 'rubocop', '~> 1.70', require: false
+  gem 'rubocop-capybara', require: false
+  gem 'rubocop-minitest', require: false
+  gem 'rubocop-rails', require: false
+  gem 'rubocop-rake', require: false
+  gem 'rubocop-sequel', require: false
 end
-
-gem 'minitest-reporters', '~> 1.7'
