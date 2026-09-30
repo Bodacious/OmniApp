@@ -1,0 +1,3 @@
+# --strict: an undefined or pending step fails the run. Nothing is
+# allowed to be skipped on any stack.
+default: --strict --format pretty --publish-quiet

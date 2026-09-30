@@ -3,3 +3,6 @@
 *.log
 *.db
 tmp
+# Stack matrix
+node_modules/
+apps/opal_node/build/

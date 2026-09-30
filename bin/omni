@@ -1,0 +1,43 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Boots the stack selected by the environment:
+#
+#   OMNI_APP=sinatra OMNI_PERSISTENCE=postgres OMNI_INTERFACE=slim bin/omni
+#
+# OMNI_APP, OMNI_PERSISTENCE and OMNI_INTERFACE are required; see
+# config/stack_matrix.yml for their values. There are no defaults: an
+# unset, unknown or excluded choice stops here with a message.
+#
+# Optional: PORT (default 9292), HOST (default 127.0.0.1), DATABASE_URL
+# (required for postgres), OMNI_ENV=test (mounts POST /__test__/reset).
+
+require_relative '../lib/omni/matrix'
+
+ROOT = File.expand_path('..', __dir__)
+
+begin
+  stack = Omni::Matrix.load.stack_from_env(ENV)
+rescue Omni::StackError => e
+  abort "bin/omni: #{e.message}"
+end
+
+host = ENV.fetch('HOST', '127.0.0.1')
+port = ENV.fetch('PORT', '9292')
+warn "bin/omni: booting #{stack.label} on http://#{host}:#{port}"
+
+Dir.chdir(ROOT)
+
+case stack.app
+when 'sinatra', 'rails'
+  # One process, no forked workers: an in-memory SQLite database lives
+  # inside a single process.
+  exec('bundle', 'exec', 'puma', '--config', '-', '--workers', '0',
+       '--bind', "tcp://#{host}:#{port}", "apps/#{stack.app}/config.ru")
+when 'opal_node'
+  system('bundle', 'exec', 'ruby', 'apps/opal_node/build.rb', exception: false) ||
+    abort('bin/omni: the Opal build failed')
+  exec({ 'HOST' => host, 'PORT' => port }, 'node', 'apps/opal_node/build/omni.js')
+else
+  abort "bin/omni: #{stack.app} is in config/stack_matrix.yml, but bin/omni doesn't know how to boot it"
+end

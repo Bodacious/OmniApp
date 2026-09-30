@@ -1,0 +1,85 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Runs the shared Cucumber specs against the stack selected by
+# OMNI_APP, OMNI_PERSISTENCE and OMNI_INTERFACE:
+#
+#   OMNI_APP=sinatra OMNI_PERSISTENCE=sqlite_memory OMNI_INTERFACE=erb bin/omni-test
+#
+# Boots the stack with bin/omni on a free port (with OMNI_ENV=test),
+# waits for /health, runs Cucumber against it, and tears it down.
+# Arguments are passed to Cucumber. The same command runs locally and
+# in CI. The server's output goes to tmp/omni-test/<cell>.log and is
+# printed if anything fails.
+
+require 'fileutils'
+require 'net/http'
+require 'socket'
+require_relative '../lib/omni/matrix'
+
+ROOT = File.expand_path('..', __dir__)
+BOOT_TIMEOUT = Integer(ENV.fetch('OMNI_BOOT_TIMEOUT', '120'))
+
+begin
+  stack = Omni::Matrix.load.stack_from_env(ENV)
+rescue Omni::StackError => e
+  abort "bin/omni-test: #{e.message}"
+end
+
+port = TCPServer.open('127.0.0.1', 0) { |server| server.addr[1] }
+base_url = "http://127.0.0.1:#{port}"
+log_path = File.join(ROOT, 'tmp', 'omni-test', "#{stack.to_h.values.join('-')}.log")
+FileUtils.mkdir_p(File.dirname(log_path))
+
+def print_log(log_path)
+  warn "\n----- server log (#{log_path}) -----"
+  warn File.readlines(log_path).last(80).join
+  warn '----- end of server log -----'
+end
+
+def healthy?(base_url)
+  Net::HTTP.get_response(URI("#{base_url}/health")).is_a?(Net::HTTPSuccess)
+rescue SystemCallError, IOError, Net::ReadTimeout
+  false
+end
+
+warn "bin/omni-test: booting #{stack.label} on #{base_url}"
+pid = Process.spawn({ 'PORT' => port.to_s, 'HOST' => '127.0.0.1', 'OMNI_ENV' => 'test' },
+                    File.join(ROOT, 'bin', 'omni'),
+                    chdir: ROOT, out: log_path, err: %i[child out], pgroup: true)
+
+status = 1
+begin
+  deadline = Time.now + BOOT_TIMEOUT
+  until healthy?(base_url)
+    if Process.waitpid(pid, Process::WNOHANG)
+      print_log(log_path)
+      abort "bin/omni-test: #{stack.label} exited before it was healthy"
+    end
+    if Time.now > deadline
+      print_log(log_path)
+      abort "bin/omni-test: #{stack.label} wasn't healthy after #{BOOT_TIMEOUT}s"
+    end
+    sleep 0.25
+  end
+  warn "bin/omni-test: #{stack.label} is up; running the specs"
+
+  cucumber_env = { 'OMNI_BASE_URL' => base_url, 'CUCUMBER_PUBLISH_QUIET' => 'true' }
+  system(cucumber_env, 'bundle', 'exec', 'cucumber', *ARGV, chdir: ROOT)
+  status = $?.exitstatus || 1
+  print_log(log_path) unless status.zero?
+ensure
+  begin
+    Process.kill('TERM', -pid)
+    50.times do
+      break if Process.waitpid(pid, Process::WNOHANG)
+
+      sleep 0.1
+    end
+    Process.kill('KILL', -pid)
+  rescue Errno::ESRCH, Errno::ECHILD
+    nil
+  end
+end
+
+exit status

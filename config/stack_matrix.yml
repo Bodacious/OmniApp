@@ -1,0 +1,29 @@
+# The single source of truth for which stacks exist.
+#
+# A stack is one value from each axis. Every combination is a valid
+# cell unless an exclusion below matches it, and every exclusion says
+# why. bin/omni refuses to boot an excluded cell, bin/omni-matrix
+# lists the valid cells, and CI runs exactly those.
+#
+# Adding an adapter means writing it and adding its name here.
+
+axes:
+  persistence:
+    - sqlite_memory
+    - postgres
+  app:
+    - rails
+    - sinatra
+    - opal_node
+  interface:
+    - erb
+    - slim
+
+exclusions:
+  - app: opal_node
+    interface: slim
+    reason: >-
+      There is no Slim compiler for Opal. Slim compiles templates to Ruby
+      with Temple at runtime, and neither is available inside an Opal
+      bundle, so the Node app can only render the shared ERB templates
+      (which Opal compiles ahead of time with Opal::ERB).

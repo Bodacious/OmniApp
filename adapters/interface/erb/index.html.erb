@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Omni todos</title>
+    <style><%= stylesheet %></style>
+  </head>
+  <body>
+    <header class="app__header">
+      <div class="app__header-inner">
+        <a class="app__brand" href="/">Omni</a>
+        <p class="stack-badge" data-testid="stack-badge" title="app / persistence / interface">
+          <span class="stack-badge__axis" data-axis="app"><%= h(stack.app) %></span>
+          <span class="stack-badge__sep">/</span>
+          <span class="stack-badge__axis" data-axis="persistence"><%= h(stack.persistence) %></span>
+          <span class="stack-badge__sep">/</span>
+          <span class="stack-badge__axis" data-axis="interface"><%= h(stack.interface) %></span>
+        </p>
+      </div>
+    </header>
+    <main class="app__container">
+      <h1 class="page__title">Todos</h1>
+      <form class="todo-form" data-testid="todo-form" action="/todos" method="post">
+        <%= hidden_fields %>
+        <label class="todo-form__label" for="todo-title">Title</label>
+        <div class="todo-form__row">
+          <input class="todo-form__input" id="todo-title" name="title" type="text" autocomplete="off" data-testid="todo-title-input">
+          <button class="btn" type="submit" data-testid="todo-submit">Add todo</button>
+        </div>
+        <% if error %>
+        <p class="todo-form__error" role="alert" data-testid="todo-error"><%= h(error) %></p>
+        <% end %>
+      </form>
+      <% if todos.empty? %>
+      <p class="todo-empty" data-testid="todo-empty">Nothing to do yet.</p>
+      <% end %>
+      <ul class="todo-list" data-testid="todo-list">
+        <% todos.each do |todo| %>
+        <li class="todo-item<%= todo.completed? ? ' todo-item--completed' : '' %>" data-testid="todo-item" data-todo-id="<%= h(todo.id) %>" data-completed="<%= todo.completed? %>">
+          <span class="todo-item__title" data-testid="todo-item-title"><%= h(todo.title) %></span>
+          <span class="todo-item__controls">
+            <% if todo.completed? %>
+            <span class="todo-item__done" data-testid="todo-done-marker">Done</span>
+            <% else %>
+            <form action="/todos/<%= h(todo.id) %>/complete" method="post">
+              <%= hidden_fields %>
+              <button class="btn btn--small btn--done" type="submit" data-testid="todo-complete-button">Complete</button>
+            </form>
+            <% end %>
+            <form action="/todos/<%= h(todo.id) %>/delete" method="post">
+              <%= hidden_fields %>
+              <button class="btn btn--small btn--danger" type="submit" data-testid="todo-delete-button">Delete</button>
+            </form>
+          </span>
+        </li>
+        <% end %>
+      </ul>
+    </main>
+  </body>
+</html>

@@ -32,10 +32,16 @@ group :sinatra do
   gem 'nio4r', '~> 2.7'
   gem 'rack-unreloader', '~> 2.1'
   gem 'rackup', '~> 2.2'
-  gem 'sequel', '~> 5.89'
   gem 'sinatra', '~> 4.1'
   gem 'sinatra-reloader', '~> 1.0', require: 'sinatra/reloader'
   gem 'slim', '~> 5.2'
+end
+
+# The Ruby persistence adapters (adapters/persistence/), shared by the
+# Rails and Sinatra apps.
+group :persistence do
+  gem 'pg', '~> 1.6'
+  gem 'sequel', '~> 5.89'
   gem 'sqlite3', '~> 2.5'
 end
 
@@ -45,6 +51,9 @@ end
 
 group :test do
   gem 'capybara', '~> 3.40'
+  gem 'cucumber', '~> 11.1', require: false
+  gem 'cuprite', '~> 0.17', require: false
+  gem 'rspec-expectations', '~> 3.13', require: false
   gem 'difftastic'
   gem 'launchy', '~> 3.1'
   gem 'minitest', '~> 5.25'
