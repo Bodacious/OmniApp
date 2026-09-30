@@ -1,0 +1,47 @@
+/ The todo page, in Slim. Same markup and data-testid hooks as
+/ adapters/interface/erb/index.html.erb, and the same names from
+/ adapters/interface/view_context.rb. Slim escapes = output itself;
+/ == is raw and is used only for hidden_fields and the stylesheet.
+doctype html
+html lang="en"
+  head
+    meta charset="utf-8"
+    meta name="viewport" content="width=device-width, initial-scale=1"
+    title Omni todos
+    style == stylesheet
+  body
+    header.app__header
+      .app__header-inner
+        a.app__brand href="/" Omni
+        p.stack-badge data-testid="stack-badge" title="app / persistence / interface"
+          span.stack-badge__axis> data-axis="app" = stack.app
+          span.stack-badge__sep> = '/'
+          span.stack-badge__axis> data-axis="persistence" = stack.persistence
+          span.stack-badge__sep> = '/'
+          span.stack-badge__axis data-axis="interface" = stack.interface
+    main.app__container
+      h1.page__title Todos
+      form.todo-form data-testid="todo-form" action="/todos" method="post"
+        == hidden_fields
+        label.todo-form__label for="todo-title" Title
+        .todo-form__row
+          input.todo-form__input id="todo-title" name="title" type="text" autocomplete="off" data-testid="todo-title-input"
+          button.btn type="submit" data-testid="todo-submit" Add todo
+        - if error
+          p.todo-form__error role="alert" data-testid="todo-error" = error
+      - if todos.empty?
+        p.todo-empty data-testid="todo-empty" Nothing to do yet.
+      ul.todo-list data-testid="todo-list"
+        - todos.each do |todo|
+          li class=(todo.completed? ? 'todo-item todo-item--completed' : 'todo-item') data-testid="todo-item" data-todo-id=todo.id data-completed=todo.completed?.to_s
+            span.todo-item__title data-testid="todo-item-title" = todo.title
+            span.todo-item__controls
+              - if todo.completed?
+                span.todo-item__done data-testid="todo-done-marker" Done
+              - else
+                form action="/todos/#{todo.id}/complete" method="post"
+                  == hidden_fields
+                  button.btn.btn--small.btn--done type="submit" data-testid="todo-complete-button" Complete
+              form action="/todos/#{todo.id}/delete" method="post"
+                == hidden_fields
+                button.btn.btn--small.btn--danger type="submit" data-testid="todo-delete-button" Delete
