@@ -4,7 +4,7 @@ require_relative 'invalid_input'
 require_relative 'tag'
 
 ##
-# A single thing to do: the model's entity. A value object in practice:
+# A single thing to do, on one List. A value object in practice:
 # every change returns a new Todo rather than altering this one, which
 # keeps it safe to share and behaves the same under MRI and Opal.
 #
@@ -35,12 +35,14 @@ class Todo
     [title, tags]
   end
 
-  attr_reader :id, :title, :tags
+  attr_reader :id, :list_id, :title, :tags
 
-  def initialize(id:, title:, completed: false, tags: [])
+  def initialize(id:, list_id:, title:, completed: false, tags: [])
     raise ArgumentError, 'A todo needs an id' if id.nil? || id.to_s.empty?
+    raise ArgumentError, 'A todo needs a list' if list_id.nil? || list_id.to_s.empty?
 
     @id = id.to_s
+    @list_id = list_id.to_s
     @title, @tags = Todo.validate(title: title, tags: tags)
     @tags.freeze
     @completed = completed ? true : false
@@ -73,6 +75,7 @@ class Todo
   def ==(other)
     other.is_a?(Todo) &&
       other.id == id &&
+      other.list_id == list_id &&
       other.title == title &&
       other.completed? == completed? &&
       other.tags == tags
@@ -81,6 +84,6 @@ class Todo
   private
 
   def copy(completed: completed?, tags: self.tags)
-    Todo.new(id: id, title: title, completed: completed, tags: tags)
+    Todo.new(id: id, list_id: list_id, title: title, completed: completed, tags: tags)
   end
 end

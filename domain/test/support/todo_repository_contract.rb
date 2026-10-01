@@ -12,8 +12,8 @@ module TodoRepositoryContract
     assert_kind_of Ports::TodoRepository, repository
   end
 
-  def test_all_is_empty_when_nothing_is_stored
-    assert_equal [], repository.all
+  def test_in_list_is_empty_when_nothing_is_stored
+    assert_equal [], repository.in_list('list-a')
   end
 
   def test_save_returns_the_todo
@@ -32,10 +32,12 @@ module TodoRepositoryContract
     assert_nil repository.find('missing')
   end
 
-  def test_all_returns_todos_in_the_order_they_were_first_saved
+  def test_in_list_returns_that_lists_todos_in_the_order_they_were_first_saved
     %w[c a b].each { |id| repository.save(todo(id, "Todo #{id}")) }
+    repository.save(todo('x', 'Elsewhere', list_id: 'list-b'))
 
-    assert_equal %w[c a b], repository.all.map(&:id)
+    assert_equal %w[c a b], repository.in_list('list-a').map(&:id)
+    assert_equal %w[x], repository.in_list('list-b').map(&:id)
   end
 
   def test_save_replaces_a_todo_with_the_same_id_in_place
@@ -44,7 +46,7 @@ module TodoRepositoryContract
 
     repository.save(todo('1', 'Buy milk').complete)
 
-    assert_equal %w[1 2], repository.all.map(&:id)
+    assert_equal %w[1 2], repository.in_list('list-a').map(&:id)
     assert_predicate repository.find('1'), :completed?
   end
 
@@ -62,12 +64,12 @@ module TodoRepositoryContract
     assert_equal %w[home urgent], repository.find('1').tags.map(&:name)
   end
 
-  def test_all_returns_each_todos_own_tags
+  def test_in_list_returns_each_todos_own_tags
     repository.save(todo('1', 'Buy milk', tags: 'home'))
     repository.save(todo('2', 'File taxes', tags: 'work urgent'))
     repository.save(todo('3', 'Nap'))
 
-    tags = repository.all.to_h { |stored| [stored.id, stored.tags.map(&:name)] }
+    tags = repository.in_list('list-a').to_h { |stored| [stored.id, stored.tags.map(&:name)] }
 
     assert_equal({ '1' => ['home'], '2' => %w[urgent work], '3' => [] }, tags)
   end
@@ -102,7 +104,7 @@ module TodoRepositoryContract
 
   private
 
-  def todo(id, title, tags: [])
-    Todo.new(id: id, title: title, tags: tags)
+  def todo(id, title, tags: [], list_id: 'list-a')
+    Todo.new(id: id, list_id: list_id, title: title, tags: tags)
   end
 end

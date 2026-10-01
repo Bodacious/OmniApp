@@ -4,8 +4,12 @@
 # visible labels, which every template on every stack emits. Nothing
 # here branches on which stack is running.
 
+# Every todo lives on a list, and every list belongs to someone: this
+# signs up a new user and opens a fresh list of theirs.
 Given('I open the todo list') do
-  visit '/'
+  sign_up(default_email, default_password)
+  create_list('Todos')
+  expect(page).to have_css(testid('list-title'), exact_text: 'Todos')
 end
 
 When('I add a todo titled {string}') do |title|
@@ -72,7 +76,7 @@ Then('the todo titled {string} is not completed') do |title|
 end
 
 Then('I see the error {string}') do |message|
-  expect(page).to have_css(testid('todo-error'), exact_text: message)
+  expect(page).to have_css(testid('error'), exact_text: message)
 end
 
 Then('the stack badge shows the configured stack') do

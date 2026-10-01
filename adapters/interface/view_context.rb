@@ -5,13 +5,18 @@ require 'cgi'
 module Adapters
   module Interface
     ##
-    # Everything the shared templates can see. The templates use only
-    # these names, so any app layer can render them by providing them:
+    # Everything the shared page template can see. The template uses
+    # only these names, so any app layer can render it by providing them:
     #
-    # [todos]         the domain's Todo objects to show, oldest first
-    # [tags]          every tag in use, as TodoService::TagCounts
-    # [current_tag]   the tag the list is filtered by, or nil
+    # [page]          which page: sign_in, sign_up, lists or list
+    # [user]          the signed-in User, or nil
+    # [lists]         the user's Lists
+    # [list]          the open list (a TodoService::UserList), or nil
+    # [todos]         the open list's todos to show, oldest first
+    # [tags]          every tag in use on the open list, as TagCounts
+    # [current_tag]   the tag the todos are filtered by, or nil
     # [error]         a message to show, or nil
+    # [email]         the email to fill back into a sign-in form
     # [stack]         the running stack (app, persistence, interface)
     # [hidden_fields] raw HTML added to every form; Rails puts its CSRF
     #                 token here, other app layers leave it empty
@@ -29,19 +34,25 @@ module Adapters
     # explicitly, because Opal's <%= %> doesn't escape.
     class ViewContext
       STYLESHEET_PATH = File.expand_path('omni.css', __dir__)
+      NAMES = %i[page user lists list todos tags current_tag error email stack hidden_fields stylesheet].freeze
 
       def self.stylesheet
         @stylesheet ||= File.read(STYLESHEET_PATH)
       end
 
-      attr_reader :todos, :tags, :current_tag, :error, :stack, :hidden_fields, :stylesheet
+      attr_reader(*NAMES)
 
-      def initialize(todos:, stack:, tags: [], current_tag: nil, error: nil, hidden_fields: '',
-                     stylesheet: self.class.stylesheet)
+      def initialize(page:, stack:, user: nil, lists: [], list: nil, todos: [], tags: [], current_tag: nil,
+                     error: nil, email: nil, hidden_fields: '', stylesheet: self.class.stylesheet)
+        @page = page.to_s
+        @user = user
+        @lists = lists
+        @list = list
         @todos = todos
         @tags = tags
         @current_tag = current_tag
         @error = error
+        @email = email
         @stack = stack
         @hidden_fields = hidden_fields
         @stylesheet = stylesheet
@@ -52,8 +63,7 @@ module Adapters
       end
 
       def locals
-        { todos: todos, tags: tags, current_tag: current_tag, error: error, stack: stack,
-          hidden_fields: hidden_fields, stylesheet: stylesheet }
+        NAMES.to_h { |name| [name, public_send(name)] }
       end
     end
   end

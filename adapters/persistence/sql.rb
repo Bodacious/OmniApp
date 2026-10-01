@@ -1,14 +1,18 @@
 # frozen_string_literal: true
 
 require 'sequel'
+require_relative 'sql/schema'
+require_relative 'sql/user_repository'
+require_relative 'sql/list_repository'
 require_relative 'sql/todo_repository'
 
 module Adapters
   module Persistence
     ##
     # The Ruby persistence adapters, shared by the Rails and Sinatra
-    # apps. Each entry opens a Sequel connection for one value of the
-    # persistence axis in config/stack_matrix.yml.
+    # apps: one Sequel connection per value of the persistence axis in
+    # config/stack_matrix.yml, and a repository for each of the domain's
+    # storage ports on top of it.
     module Sql
       class ConfigurationError < StandardError; end
 
@@ -29,16 +33,50 @@ module Adapters
         end
       }.freeze
 
+      ##
+      # The repositories for one database, plus the two things the
+      # composition root needs that aren't part of any port: which
+      # database this really is (for /health) and a way to empty it
+      # (for the test-only reset).
+      class Store
+        attr_reader :users, :lists, :todos
+
+        def initialize(database)
+          @database = database
+          Schema.create(database)
+          @users = UserRepository.new(database)
+          @lists = ListRepository.new(database)
+          @todos = TodoRepository.new(database)
+        end
+
+        # Read from the live connection rather than from configuration.
+        def persistence_name
+          case @database.database_type
+          when :sqlite then ['', ':memory:'].include?(@database.opts[:database].to_s) ? 'sqlite_memory' : 'sqlite_file'
+          when :postgres then 'postgres'
+          else @database.database_type.to_s
+          end
+        end
+
+        def clear
+          @database.transaction do
+            todos.clear
+            lists.clear
+            users.clear
+          end
+        end
+      end
+
       def self.names
         CONNECTIONS.keys
       end
 
-      # A Ports::TodoRepository for the named persistence, schema ready.
-      def self.todo_repository(name, env)
+      # A Store for the named persistence, schema ready.
+      def self.store(name, env)
         connect = CONNECTIONS.fetch(name) do
           raise ConfigurationError, "No Ruby persistence adapter named #{name.inspect}. Known: #{names.join(', ')}"
         end
-        TodoRepository.new(connect.call(env))
+        Store.new(connect.call(env))
       end
     end
   end

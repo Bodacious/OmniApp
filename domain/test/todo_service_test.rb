@@ -2,118 +2,169 @@
 
 require 'test_helper'
 require 'todo_service'
+require 'support/in_memory_list_repository'
 require 'support/in_memory_todo_repository'
 require 'support/sequential_id_generator'
 
 class TodoServiceTest < Minitest::Test
   def setup
-    @repository = InMemoryTodoRepository.new
+    @lists = InMemoryListRepository.new
+    @todos = InMemoryTodoRepository.new
     @ids = SequentialIdGenerator.new
-    @service = TodoService.new(repository: @repository, id_generator: @ids)
+    @service = TodoService.new(lists: @lists, todos: @todos, id_generator: @ids)
+    @ada = User.new(id: 'ada', email: 'ada@example.com', password_digest: 'd')
+    @bob = User.new(id: 'bob', email: 'bob@example.com', password_digest: 'd')
   end
 
-  def test_there_are_no_todos_to_begin_with
-    assert_empty @service.todos
+  # --- lists
+
+  def test_a_new_user_has_no_lists
+    assert_empty @service.lists(@ada)
   end
 
-  def test_add_stores_a_todo_with_a_generated_id
-    todo = @service.add('Buy milk')
+  def test_create_list_gives_the_user_a_list
+    list = @service.create_list(@ada, ' Groceries ')
 
-    assert_equal 'todo-1', todo.id
-    assert_equal [todo], @service.todos
+    assert_equal 'Groceries', list.name
+    assert_equal [list], @service.lists(@ada)
   end
 
-  def test_add_stores_the_tags
-    todo = @service.add('Buy milk', 'Errands, #home')
+  def test_users_see_only_their_own_lists
+    @service.create_list(@ada, 'Groceries')
 
-    assert_equal %w[errands home], @repository.find(todo.id).tags.map(&:name)
+    assert_empty @service.lists(@bob)
   end
 
-  def test_add_rejects_a_blank_title_without_storing_anything_or_spending_an_id
-    assert_raises(Todo::Invalid) { @service.add('  ') }
-    assert_empty @service.todos
+  def test_a_blank_list_name_is_rejected_without_spending_an_id
+    assert_raises(List::Invalid) { @service.create_list(@ada, ' ') }
     assert_equal 'todo-1', @ids.next_id
   end
 
-  def test_add_rejects_a_malformed_tag_without_storing_anything_or_spending_an_id
-    assert_raises(Tag::Invalid) { @service.add('Buy milk', 'not ok!') }
-    assert_empty @service.todos
-    assert_equal 'todo-1', @ids.next_id
+  def test_opening_someone_elses_list_is_not_found
+    list = @service.create_list(@ada, 'Groceries')
+
+    error = assert_raises(TodoService::NotFound) { @service.list(@bob, list.id) }
+    assert_equal 'No such list', error.message
+    assert_raises(TodoService::NotFound) { @service.list(@ada, 'missing') }
   end
 
-  def test_complete_marks_the_todo_as_completed
-    todo = @service.add('Buy milk')
+  def test_delete_list_removes_it_and_its_todos
+    list = @service.create_list(@ada, 'Groceries')
+    milk = @service.list(@ada, list.id).add('Buy milk')
 
-    @service.complete(todo.id)
+    @service.delete_list(@ada, list.id)
 
-    assert_predicate @service.todos.first, :completed?
+    assert_empty @service.lists(@ada)
+    assert_nil @todos.find(milk.id)
   end
 
-  def test_complete_raises_not_found_for_an_unknown_todo
-    assert_raises(TodoService::NotFound) { @service.complete('missing') }
+  def test_users_cannot_delete_someone_elses_list
+    list = @service.create_list(@ada, 'Groceries')
+
+    assert_raises(TodoService::NotFound) { @service.delete_list(@bob, list.id) }
+    assert_equal [list], @service.lists(@ada)
   end
 
-  def test_tag_adds_tags_to_a_todo
-    todo = @service.add('Buy milk', 'home')
+  # --- todos on a list
 
-    @service.tag(todo.id, 'urgent')
+  def test_add_stores_a_todo_on_the_list
+    groceries = open('Groceries')
 
-    assert_equal %w[home urgent], @repository.find(todo.id).tags.map(&:name)
+    todo = groceries.add('Buy milk', 'Errands, #home')
+
+    assert_equal groceries.id, todo.list_id
+    assert_equal [todo], groceries.todos
+    assert_equal %w[errands home], todo.tags.map(&:name)
+  end
+
+  def test_lists_keep_their_todos_apart
+    groceries = open('Groceries')
+    work = open('Work')
+    groceries.add('Buy milk')
+    work.add('File taxes')
+
+    assert_equal ['Buy milk'], groceries.todos.map(&:title)
+    assert_equal ['File taxes'], work.todos.map(&:title)
+  end
+
+  def test_add_rejects_bad_input_without_storing_anything_or_spending_an_id
+    groceries = open('Groceries')
+    next_id = @ids.next_id.succ
+
+    assert_raises(Todo::Invalid) { groceries.add('  ') }
+    assert_raises(Tag::Invalid) { groceries.add('Buy milk', 'not ok!') }
+    assert_empty groceries.todos
+    assert_equal next_id, @ids.next_id
+  end
+
+  def test_complete_tag_and_untag
+    groceries = open('Groceries')
+    todo = groceries.add('Buy milk', 'home')
+
+    groceries.complete(todo.id)
+    groceries.tag(todo.id, 'urgent')
+    groceries.untag(todo.id, 'home')
+
+    stored = @todos.find(todo.id)
+    assert_predicate stored, :completed?
+    assert_equal ['urgent'], stored.tags.map(&:name)
   end
 
   def test_tag_enforces_the_most_tags_a_todo_can_have
-    todo = @service.add('Busy', 'a b c d e')
+    groceries = open('Groceries')
+    todo = groceries.add('Busy', 'a b c d e')
 
-    assert_raises(Todo::Invalid) { @service.tag(todo.id, 'f') }
-    assert_equal 5, @repository.find(todo.id).tags.size
+    assert_raises(Todo::Invalid) { groceries.tag(todo.id, 'f') }
+    assert_equal 5, @todos.find(todo.id).tags.size
   end
 
-  def test_untag_removes_a_tag
-    todo = @service.add('Buy milk', 'home urgent')
+  def test_todos_can_be_filtered_by_tag_and_tags_are_counted_per_list
+    groceries = open('Groceries')
+    milk = groceries.add('Buy milk', 'home errands')
+    groceries.add('File taxes', 'work')
+    mum = groceries.add('Call mum', 'Home')
+    open('Work').add('Elsewhere', 'home')
 
-    @service.untag(todo.id, 'urgent')
-
-    assert_equal ['home'], @repository.find(todo.id).tags.map(&:name)
+    assert_equal [milk.id, mum.id], groceries.todos(tagged: '#home').map(&:id)
+    assert_equal 3, groceries.todos(tagged: '').size
+    counts = groceries.tags.map { |count| [count.tag.name, count.todo_count] }
+    assert_equal [['errands', 1], ['home', 2], ['work', 1]], counts
   end
 
-  def test_tag_and_untag_raise_not_found_for_an_unknown_todo
-    assert_raises(TodoService::NotFound) { @service.tag('missing', 'home') }
-    assert_raises(TodoService::NotFound) { @service.untag('missing', 'home') }
+  def test_a_todo_from_another_list_is_not_found
+    groceries = open('Groceries')
+    work = open('Work')
+    taxes = work.add('File taxes')
+
+    %i[complete delete].each do |use_case|
+      assert_raises(TodoService::NotFound) { groceries.public_send(use_case, taxes.id) }
+    end
+    assert_raises(TodoService::NotFound) { groceries.tag(taxes.id, 'x') }
+    refute_predicate @todos.find(taxes.id), :completed?
   end
 
-  def test_todos_can_be_filtered_by_tag
-    milk = @service.add('Buy milk', 'home')
-    @service.add('File taxes', 'work')
-    mum = @service.add('Call mum', 'Home')
+  def test_a_todo_on_someone_elses_list_cannot_be_reached
+    adas = open('Groceries')
+    milk = adas.add('Buy milk')
+    bobs = @service.list(@bob, @service.create_list(@bob, 'Mine').id)
 
-    assert_equal [milk.id, mum.id], @service.todos(tagged: '#home').map(&:id)
-    assert_equal 3, @service.todos(tagged: nil).size
-    assert_equal 3, @service.todos(tagged: '').size
-  end
-
-  def test_filtering_by_a_malformed_tag_is_invalid_input
-    assert_raises(InvalidInput) { @service.todos(tagged: 'not ok!') }
-  end
-
-  def test_tags_lists_each_tag_in_use_with_its_count
-    @service.add('Buy milk', 'home errands')
-    @service.add('Call mum', 'home')
-
-    counts = @service.tags.map { |count| [count.tag.name, count.todo_count] }
-
-    assert_equal [['errands', 1], ['home', 2]], counts
+    assert_raises(TodoService::NotFound) { bobs.delete(milk.id) }
+    assert_equal [milk], adas.todos
   end
 
   def test_delete_removes_the_todo
-    keep = @service.add('Walk dog')
-    gone = @service.add('Buy milk')
+    groceries = open('Groceries')
+    keep = groceries.add('Walk dog')
+    gone = groceries.add('Buy milk')
 
-    @service.delete(gone.id)
+    groceries.delete(gone.id)
 
-    assert_equal [keep], @service.todos
+    assert_equal [keep], groceries.todos
   end
 
-  def test_delete_raises_not_found_for_an_unknown_todo
-    assert_raises(TodoService::NotFound) { @service.delete('missing') }
+  private
+
+  def open(name, user = @ada)
+    @service.list(user, @service.create_list(user, name).id)
   end
 end

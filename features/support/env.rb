@@ -25,6 +25,16 @@ Capybara.default_driver = :cuprite
 Capybara.javascript_driver = :cuprite
 
 module TodoPage
+  # Methods, not constants: steps are blocks defined at the top level,
+  # so constants in this module aren't in their lexical scope.
+  def default_email
+    'me@example.com'
+  end
+
+  def default_password
+    'correct horse battery'
+  end
+
   def testid(name)
     "[data-testid='#{name}']"
   end
@@ -40,6 +50,42 @@ module TodoPage
       fill_in 'Tags', with: tags if tags
       click_button 'Add todo'
     end
+  end
+
+  def sign_up(email, password)
+    visit '/sign_up'
+    within(testid('sign-up-form')) do
+      fill_in 'Email', with: email
+      fill_in 'Password', with: password
+      click_button 'Create account'
+    end
+  end
+
+  def sign_in(email, password)
+    visit '/sign_in'
+    within(testid('sign-in-form')) do
+      fill_in 'Email', with: email
+      fill_in 'Password', with: password
+      click_button 'Sign in'
+    end
+  end
+
+  def sign_out
+    find(testid('sign-out-button')).click
+    expect(page).to have_css(testid('sign-in-form'))
+  end
+
+  # From the lists page, which signing in lands on.
+  def create_list(name)
+    visit '/'
+    within(testid('list-form')) do
+      fill_in 'Name', with: name
+      click_button 'Create list'
+    end
+  end
+
+  def list_names
+    all(testid('list-link')).map(&:text)
   end
 
   def tag_names(item)

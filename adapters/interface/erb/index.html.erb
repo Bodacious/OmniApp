@@ -11,18 +11,82 @@
     <header class="app__header">
       <div class="app__header-inner">
         <a class="app__brand" href="/">Omni</a>
-        <p class="stack-badge" data-testid="stack-badge" title="app / persistence / interface">
-          <span class="stack-badge__axis" data-axis="app"><%= h(stack.app) %></span>
-          <span class="stack-badge__sep">/</span>
-          <span class="stack-badge__axis" data-axis="persistence"><%= h(stack.persistence) %></span>
-          <span class="stack-badge__sep">/</span>
-          <span class="stack-badge__axis" data-axis="interface"><%= h(stack.interface) %></span>
-        </p>
+        <div class="app__header-end">
+          <% if user %>
+          <span class="current-user" data-testid="current-user"><%= h(user.email) %></span>
+          <form class="sign-out" action="/sign_out" method="post">
+            <%= hidden_fields %>
+            <button class="btn btn--ghost btn--small" type="submit" data-testid="sign-out-button">Sign out</button>
+          </form>
+          <% end %>
+          <p class="stack-badge" data-testid="stack-badge" title="app / persistence / interface">
+            <span class="stack-badge__axis" data-axis="app"><%= h(stack.app) %></span>
+            <span class="stack-badge__sep">/</span>
+            <span class="stack-badge__axis" data-axis="persistence"><%= h(stack.persistence) %></span>
+            <span class="stack-badge__sep">/</span>
+            <span class="stack-badge__axis" data-axis="interface"><%= h(stack.interface) %></span>
+          </p>
+        </div>
       </div>
     </header>
     <main class="app__container">
-      <h1 class="page__title">Todos</h1>
-      <form class="todo-form" data-testid="todo-form" action="/todos" method="post">
+      <% if page == 'sign_in' || page == 'sign_up' %>
+      <h1 class="page__title"><%= page == 'sign_in' ? 'Sign in' : 'Create an account' %></h1>
+      <form class="todo-form auth-form" data-testid="<%= page == 'sign_in' ? 'sign-in-form' : 'sign-up-form' %>" action="/<%= page %>" method="post">
+        <%= hidden_fields %>
+        <div class="auth-form__field">
+          <label class="todo-form__label" for="email">Email</label>
+          <input class="todo-form__input" id="email" name="email" type="text" inputmode="email" value="<%= h(email) %>" autocomplete="email" data-testid="email-input">
+        </div>
+        <div class="auth-form__field">
+          <label class="todo-form__label" for="password">Password</label>
+          <input class="todo-form__input" id="password" name="password" type="password" autocomplete="<%= page == 'sign_in' ? 'current-password' : 'new-password' %>" data-testid="password-input">
+        </div>
+        <% if error %>
+        <p class="todo-form__error" role="alert" data-testid="error"><%= h(error) %></p>
+        <% end %>
+        <button class="btn" type="submit" data-testid="auth-submit"><%= page == 'sign_in' ? 'Sign in' : 'Create account' %></button>
+        <% if page == 'sign_in' %>
+        <p class="auth-form__switch">New here? <a href="/sign_up" data-testid="sign-up-link">Create an account</a></p>
+        <% else %>
+        <p class="auth-form__switch">Have an account? <a href="/sign_in" data-testid="sign-in-link">Sign in</a></p>
+        <% end %>
+      </form>
+      <% end %>
+      <% if page == 'lists' %>
+      <h1 class="page__title">Your lists</h1>
+      <form class="todo-form" data-testid="list-form" action="/lists" method="post">
+        <%= hidden_fields %>
+        <div class="todo-form__row">
+          <div class="todo-form__field">
+            <label class="todo-form__label" for="list-name">Name</label>
+            <input class="todo-form__input" id="list-name" name="name" type="text" placeholder="e.g. Groceries" autocomplete="off" data-testid="list-name-input">
+          </div>
+          <button class="btn" type="submit" data-testid="list-submit">Create list</button>
+        </div>
+        <% if error %>
+        <p class="todo-form__error" role="alert" data-testid="error"><%= h(error) %></p>
+        <% end %>
+      </form>
+      <% if lists.empty? %>
+      <p class="todo-empty" data-testid="lists-empty">No lists yet. Create one above.</p>
+      <% end %>
+      <ul class="todo-list" data-testid="lists">
+        <% lists.each do |each_list| %>
+        <li class="todo-item list-item" data-testid="list-item" data-list-id="<%= h(each_list.id) %>">
+          <a class="list-item__link" href="/lists/<%= h(each_list.id) %>" data-testid="list-link"><%= h(each_list.name) %></a>
+          <form action="/lists/<%= h(each_list.id) %>/delete" method="post">
+            <%= hidden_fields %>
+            <button class="btn btn--small btn--danger" type="submit" data-testid="list-delete-button">Delete</button>
+          </form>
+        </li>
+        <% end %>
+      </ul>
+      <% end %>
+      <% if page == 'list' %>
+      <p class="breadcrumb"><a href="/" data-testid="back-to-lists">&larr; All lists</a></p>
+      <h1 class="page__title" data-testid="list-title"><%= h(list.name) %></h1>
+      <form class="todo-form" data-testid="todo-form" action="/lists/<%= h(list.id) %>/todos" method="post">
         <%= hidden_fields %>
         <div class="todo-form__row">
           <div class="todo-form__field">
@@ -36,17 +100,17 @@
           <button class="btn" type="submit" data-testid="todo-submit">Add todo</button>
         </div>
         <% if error %>
-        <p class="todo-form__error" role="alert" data-testid="todo-error"><%= h(error) %></p>
+        <p class="todo-form__error" role="alert" data-testid="error"><%= h(error) %></p>
         <% end %>
       </form>
       <% if tags.any? %>
       <nav class="tag-filter" data-testid="tag-filter" aria-label="Filter by tag">
         <span class="tag-filter__label">Tags</span>
         <% tags.each do |tag_count| %>
-        <a class="tag-filter__tag<%= tag_count.tag.name == current_tag ? ' tag-filter__tag--current' : '' %>" href="/?tag=<%= h(tag_count.tag.name) %>" data-testid="tag-filter-link" data-tag="<%= h(tag_count.tag.name) %>">#<%= h(tag_count.tag.name) %> <span class="tag-filter__count"><%= tag_count.todo_count %></span></a>
+        <a class="tag-filter__tag<%= tag_count.tag.name == current_tag ? ' tag-filter__tag--current' : '' %>" href="/lists/<%= h(list.id) %>?tag=<%= h(tag_count.tag.name) %>" data-testid="tag-filter-link" data-tag="<%= h(tag_count.tag.name) %>">#<%= h(tag_count.tag.name) %> <span class="tag-filter__count"><%= tag_count.todo_count %></span></a>
         <% end %>
         <% if current_tag %>
-        <a class="tag-filter__clear" href="/" data-testid="tag-filter-clear">Show all</a>
+        <a class="tag-filter__clear" href="/lists/<%= h(list.id) %>" data-testid="tag-filter-clear">Show all</a>
         <% end %>
       </nav>
       <% end %>
@@ -61,14 +125,14 @@
             <span class="todo-item__tags">
               <% todo.tags.each do |tag| %>
               <span class="tag" data-testid="todo-tag" data-tag="<%= h(tag.name) %>">
-                <a class="tag__name" href="/?tag=<%= h(tag.name) %>">#<%= h(tag.name) %></a>
-                <form class="tag__remove" action="/todos/<%= h(todo.id) %>/tags/<%= h(tag.name) %>/delete" method="post">
+                <a class="tag__name" href="/lists/<%= h(list.id) %>?tag=<%= h(tag.name) %>">#<%= h(tag.name) %></a>
+                <form class="tag__remove" action="/lists/<%= h(list.id) %>/todos/<%= h(todo.id) %>/tags/<%= h(tag.name) %>/delete" method="post">
                   <%= hidden_fields %>
                   <button class="tag__remove-button" type="submit" aria-label="Remove tag <%= h(tag.name) %>" data-testid="todo-untag-button">&times;</button>
                 </form>
               </span>
               <% end %>
-              <form class="tag-add" action="/todos/<%= h(todo.id) %>/tags" method="post" data-testid="todo-tag-form">
+              <form class="tag-add" action="/lists/<%= h(list.id) %>/todos/<%= h(todo.id) %>/tags" method="post" data-testid="todo-tag-form">
                 <%= hidden_fields %>
                 <input class="tag-add__input" name="tags" type="text" placeholder="+ tag" aria-label="Add tags to <%= h(todo.title) %>" autocomplete="off" data-testid="todo-tag-input">
                 <button class="tag-add__button" type="submit" data-testid="todo-tag-submit">Tag</button>
@@ -79,12 +143,12 @@
             <% if todo.completed? %>
             <span class="todo-item__done" data-testid="todo-done-marker">Done</span>
             <% else %>
-            <form action="/todos/<%= h(todo.id) %>/complete" method="post">
+            <form action="/lists/<%= h(list.id) %>/todos/<%= h(todo.id) %>/complete" method="post">
               <%= hidden_fields %>
               <button class="btn btn--small btn--done" type="submit" data-testid="todo-complete-button">Complete</button>
             </form>
             <% end %>
-            <form action="/todos/<%= h(todo.id) %>/delete" method="post">
+            <form action="/lists/<%= h(list.id) %>/todos/<%= h(todo.id) %>/delete" method="post">
               <%= hidden_fields %>
               <button class="btn btn--small btn--danger" type="submit" data-testid="todo-delete-button">Delete</button>
             </form>
@@ -92,6 +156,7 @@
         </li>
         <% end %>
       </ul>
+      <% end %>
     </main>
   </body>
 </html>

@@ -176,3 +176,17 @@ a { color: inherit; text-decoration: none; }
   color: #3730a3;
   cursor: pointer;
 }
+
+/* Accounts and lists */
+.app__header-end { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.current-user { font-size: 14px; font-weight: 600; color: var(--c-muted); }
+.sign-out { margin: 0; }
+.btn--ghost { background: transparent; border-color: var(--c-border); color: var(--c-text); }
+.btn--ghost:hover { background: #f1f5f9; }
+.auth-form { max-width: 420px; display: grid; gap: 14px; }
+.auth-form .btn { justify-self: start; }
+.auth-form__switch { margin: 0; font-size: 14px; color: var(--c-muted); }
+.auth-form__switch a, .breadcrumb a { color: var(--c-primary); text-decoration: underline; }
+.breadcrumb { margin: 0 0 6px; font-size: 14px; }
+.list-item__link { flex: 1; font-weight: 700; font-size: 17px; }
+.list-item__link:hover { text-decoration: underline; }

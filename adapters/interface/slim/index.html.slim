@@ -1,4 +1,4 @@
-/ The todo page, in Slim. Same markup and data-testid hooks as
+/ The todo app's pages, in Slim. Same markup and data-testid hooks as
 / adapters/interface/erb/index.html.erb, and the same names from
 / adapters/interface/view_context.rb. Slim escapes = output itself;
 / == is raw and is used only for hidden_fields and the stylesheet.
@@ -14,65 +14,117 @@ html lang="en"
     header.app__header
       .app__header-inner
         a.app__brand href="/" Omni
-        p.stack-badge data-testid="stack-badge" title="app / persistence / interface"
-          span.stack-badge__axis> data-axis="app" = stack.app
-          span.stack-badge__sep> = '/'
-          span.stack-badge__axis> data-axis="persistence" = stack.persistence
-          span.stack-badge__sep> = '/'
-          span.stack-badge__axis data-axis="interface" = stack.interface
+        .app__header-end
+          - if user
+            span.current-user data-testid="current-user" = user.email
+            form.sign-out action="/sign_out" method="post"
+              == hidden_fields
+              button.btn.btn--ghost.btn--small type="submit" data-testid="sign-out-button" Sign out
+          p.stack-badge data-testid="stack-badge" title="app / persistence / interface"
+            span.stack-badge__axis> data-axis="app" = stack.app
+            span.stack-badge__sep> = '/'
+            span.stack-badge__axis> data-axis="persistence" = stack.persistence
+            span.stack-badge__sep> = '/'
+            span.stack-badge__axis data-axis="interface" = stack.interface
     main.app__container
-      h1.page__title Todos
-      form.todo-form data-testid="todo-form" action="/todos" method="post"
-        == hidden_fields
-        .todo-form__row
-          .todo-form__field
-            label.todo-form__label for="todo-title" Title
-            input.todo-form__input id="todo-title" name="title" type="text" placeholder="e.g. Buy milk" autocomplete="off" data-testid="todo-title-input"
-          .todo-form__field.todo-form__field--tags
-            label.todo-form__label for="todo-tags" Tags
-            input.todo-form__input id="todo-tags" name="tags" type="text" placeholder="e.g. home, urgent" autocomplete="off" data-testid="todo-tags-input"
-          button.btn type="submit" data-testid="todo-submit" Add todo
-        - if error
-          p.todo-form__error role="alert" data-testid="todo-error" = error
-      - if tags.any?
-        nav.tag-filter data-testid="tag-filter" aria-label="Filter by tag"
-          span.tag-filter__label Tags
-          - tags.each do |tag_count|
-            a class=(tag_count.tag.name == current_tag ? 'tag-filter__tag tag-filter__tag--current' : 'tag-filter__tag') href="/?tag=#{tag_count.tag.name}" data-testid="tag-filter-link" data-tag=tag_count.tag.name
-              | ##{tag_count.tag.name}
+      - if page == 'sign_in' || page == 'sign_up'
+        h1.page__title = page == 'sign_in' ? 'Sign in' : 'Create an account'
+        form.todo-form.auth-form data-testid=(page == 'sign_in' ? 'sign-in-form' : 'sign-up-form') action="/#{page}" method="post"
+          == hidden_fields
+          .auth-form__field
+            label.todo-form__label for="email" Email
+            input.todo-form__input id="email" name="email" type="text" inputmode="email" value=email.to_s autocomplete="email" data-testid="email-input"
+          .auth-form__field
+            label.todo-form__label for="password" Password
+            input.todo-form__input id="password" name="password" type="password" autocomplete=(page == 'sign_in' ? 'current-password' : 'new-password') data-testid="password-input"
+          - if error
+            p.todo-form__error role="alert" data-testid="error" = error
+          button.btn type="submit" data-testid="auth-submit" = page == 'sign_in' ? 'Sign in' : 'Create account'
+          - if page == 'sign_in'
+            p.auth-form__switch
+              | New here?
               '
-              span.tag-filter__count = tag_count.todo_count
-          - if current_tag
-            a.tag-filter__clear href="/" data-testid="tag-filter-clear" Show all
-      - if todos.empty?
-        p.todo-empty data-testid="todo-empty"
-          - if current_tag
-            | No todos tagged ##{current_tag}.
+              a href="/sign_up" data-testid="sign-up-link" Create an account
           - else
-            | Nothing to do yet.
-      ul.todo-list data-testid="todo-list"
-        - todos.each do |todo|
-          li class=(todo.completed? ? 'todo-item todo-item--completed' : 'todo-item') data-testid="todo-item" data-todo-id=todo.id data-completed=todo.completed?.to_s
-            span.todo-item__main
-              span.todo-item__title data-testid="todo-item-title" = todo.title
-              span.todo-item__tags
-                - todo.tags.each do |tag|
-                  span.tag data-testid="todo-tag" data-tag=tag.name
-                    a.tag__name href="/?tag=#{tag.name}" = "##{tag.name}"
-                    form.tag__remove action="/todos/#{todo.id}/tags/#{tag.name}/delete" method="post"
-                      == hidden_fields
-                      button.tag__remove-button type="submit" aria-label="Remove tag #{tag.name}" data-testid="todo-untag-button" &times;
-                form.tag-add action="/todos/#{todo.id}/tags" method="post" data-testid="todo-tag-form"
-                  == hidden_fields
-                  input.tag-add__input name="tags" type="text" placeholder="+ tag" aria-label="Add tags to #{todo.title}" autocomplete="off" data-testid="todo-tag-input"
-                  button.tag-add__button type="submit" data-testid="todo-tag-submit" Tag
-            span.todo-item__controls
-              - if todo.completed?
-                span.todo-item__done data-testid="todo-done-marker" Done
-              - else
-                form action="/todos/#{todo.id}/complete" method="post"
-                  == hidden_fields
-                  button.btn.btn--small.btn--done type="submit" data-testid="todo-complete-button" Complete
-              form action="/todos/#{todo.id}/delete" method="post"
+            p.auth-form__switch
+              | Have an account?
+              '
+              a href="/sign_in" data-testid="sign-in-link" Sign in
+      - if page == 'lists'
+        h1.page__title Your lists
+        form.todo-form data-testid="list-form" action="/lists" method="post"
+          == hidden_fields
+          .todo-form__row
+            .todo-form__field
+              label.todo-form__label for="list-name" Name
+              input.todo-form__input id="list-name" name="name" type="text" placeholder="e.g. Groceries" autocomplete="off" data-testid="list-name-input"
+            button.btn type="submit" data-testid="list-submit" Create list
+          - if error
+            p.todo-form__error role="alert" data-testid="error" = error
+        - if lists.empty?
+          p.todo-empty data-testid="lists-empty" No lists yet. Create one above.
+        ul.todo-list data-testid="lists"
+          - lists.each do |each_list|
+            li.todo-item.list-item data-testid="list-item" data-list-id=each_list.id
+              a.list-item__link href="/lists/#{each_list.id}" data-testid="list-link" = each_list.name
+              form action="/lists/#{each_list.id}/delete" method="post"
                 == hidden_fields
-                button.btn.btn--small.btn--danger type="submit" data-testid="todo-delete-button" Delete
+                button.btn.btn--small.btn--danger type="submit" data-testid="list-delete-button" Delete
+      - if page == 'list'
+        p.breadcrumb
+          a href="/" data-testid="back-to-lists" &larr; All lists
+        h1.page__title data-testid="list-title" = list.name
+        form.todo-form data-testid="todo-form" action="/lists/#{list.id}/todos" method="post"
+          == hidden_fields
+          .todo-form__row
+            .todo-form__field
+              label.todo-form__label for="todo-title" Title
+              input.todo-form__input id="todo-title" name="title" type="text" placeholder="e.g. Buy milk" autocomplete="off" data-testid="todo-title-input"
+            .todo-form__field.todo-form__field--tags
+              label.todo-form__label for="todo-tags" Tags
+              input.todo-form__input id="todo-tags" name="tags" type="text" placeholder="e.g. home, urgent" autocomplete="off" data-testid="todo-tags-input"
+            button.btn type="submit" data-testid="todo-submit" Add todo
+          - if error
+            p.todo-form__error role="alert" data-testid="error" = error
+        - if tags.any?
+          nav.tag-filter data-testid="tag-filter" aria-label="Filter by tag"
+            span.tag-filter__label Tags
+            - tags.each do |tag_count|
+              a class=(tag_count.tag.name == current_tag ? 'tag-filter__tag tag-filter__tag--current' : 'tag-filter__tag') href="/lists/#{list.id}?tag=#{tag_count.tag.name}" data-testid="tag-filter-link" data-tag=tag_count.tag.name
+                | ##{tag_count.tag.name}
+                '
+                span.tag-filter__count = tag_count.todo_count
+            - if current_tag
+              a.tag-filter__clear href="/lists/#{list.id}" data-testid="tag-filter-clear" Show all
+        - if todos.empty?
+          p.todo-empty data-testid="todo-empty"
+            - if current_tag
+              | No todos tagged ##{current_tag}.
+            - else
+              | Nothing to do yet.
+        ul.todo-list data-testid="todo-list"
+          - todos.each do |todo|
+            li class=(todo.completed? ? 'todo-item todo-item--completed' : 'todo-item') data-testid="todo-item" data-todo-id=todo.id data-completed=todo.completed?.to_s
+              span.todo-item__main
+                span.todo-item__title data-testid="todo-item-title" = todo.title
+                span.todo-item__tags
+                  - todo.tags.each do |tag|
+                    span.tag data-testid="todo-tag" data-tag=tag.name
+                      a.tag__name href="/lists/#{list.id}?tag=#{tag.name}" = "##{tag.name}"
+                      form.tag__remove action="/lists/#{list.id}/todos/#{todo.id}/tags/#{tag.name}/delete" method="post"
+                        == hidden_fields
+                        button.tag__remove-button type="submit" aria-label="Remove tag #{tag.name}" data-testid="todo-untag-button" &times;
+                  form.tag-add action="/lists/#{list.id}/todos/#{todo.id}/tags" method="post" data-testid="todo-tag-form"
+                    == hidden_fields
+                    input.tag-add__input name="tags" type="text" placeholder="+ tag" aria-label="Add tags to #{todo.title}" autocomplete="off" data-testid="todo-tag-input"
+                    button.tag-add__button type="submit" data-testid="todo-tag-submit" Tag
+              span.todo-item__controls
+                - if todo.completed?
+                  span.todo-item__done data-testid="todo-done-marker" Done
+                - else
+                  form action="/lists/#{list.id}/todos/#{todo.id}/complete" method="post"
+                    == hidden_fields
+                    button.btn.btn--small.btn--done type="submit" data-testid="todo-complete-button" Complete
+                form action="/lists/#{list.id}/todos/#{todo.id}/delete" method="post"
+                  == hidden_fields
+                  button.btn.btn--small.btn--danger type="submit" data-testid="todo-delete-button" Delete

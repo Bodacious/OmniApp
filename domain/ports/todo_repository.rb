@@ -2,14 +2,14 @@
 
 module Ports
   ##
-  # The repository port: how the domain stores todos. The domain
+  # The todo repository port: how the domain stores todos. The domain
   # defines it; persistence adapters implement it by including this
   # module and overriding every method.
   #
-  # The port is synchronous. Every method returns its result directly,
-  # never a promise or callback, so the same domain code runs unchanged
-  # whether the adapter talks to SQLite through Sequel under MRI or to
-  # Postgres through pg-native under Node.
+  # Like every port here it is synchronous. Every method returns its
+  # result directly, never a promise or callback, so the same domain
+  # code runs unchanged whether an adapter talks to SQLite through
+  # Sequel under MRI or to Postgres through pg-native under Node.
   #
   # Adapters must not generate ids: every todo arrives with its id
   # already set (see Ports::IdGenerator).
@@ -17,25 +17,25 @@ module Ports
   # The contract, checked for every adapter by
   # domain/test/support/todo_repository_contract.rb:
   #
-  # [all]
-  #   Every stored Todo as an Array, in the order they were first
-  #   saved. An empty Array when there are none.
-  #
-  # Todos come back exactly as they were saved: same id, title,
-  # completed state and tags. How an adapter stores tags (a join table,
-  # a column, a Hash) is its own business.
+  # [in_list(list_id)]
+  #   Every stored Todo on that list, as an Array, in the order they
+  #   were first saved. An empty Array when there are none.
   # [find(id)]
   #   The stored Todo with this id, or nil.
   # [save(todo)]
   #   Stores +todo+, with its tags. If a todo with the same id is
-  #   already stored, it is replaced, tags and all, and keeps its place
-  #   in #all. Returns +todo+.
+  #   already stored, it is replaced, tags and all, and keeps its place.
+  #   Returns +todo+.
   # [delete(id)]
-  #   Removes the todo with this id. Returns true if one was removed,
+  #   Removes the todo, and its tags. Returns true if one was removed,
   #   false if there was none.
+  #
+  # Todos come back exactly as they were saved: same id, list, title,
+  # completed state and tags. How an adapter stores tags (a join table,
+  # a column, a Hash) is its own business.
   module TodoRepository
-    def all
-      raise NotImplementedError, "#{self.class} must implement #all"
+    def in_list(_list_id)
+      raise NotImplementedError, "#{self.class} must implement #in_list"
     end
 
     def find(_id)
