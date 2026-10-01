@@ -106,6 +106,7 @@ class TodoServiceTest < Minitest::Test
     groceries.untag(todo.id, 'home')
 
     stored = @todos.find(todo.id)
+
     assert_predicate stored, :completed?
     assert_equal ['urgent'], stored.tags.map(&:name)
   end
@@ -128,6 +129,7 @@ class TodoServiceTest < Minitest::Test
     assert_equal [milk.id, mum.id], groceries.todos(tagged: '#home').map(&:id)
     assert_equal 3, groceries.todos(tagged: '').size
     counts = groceries.tags.map { |count| [count.tag.name, count.todo_count] }
+
     assert_equal [['errands', 1], ['home', 2], ['work', 1]], counts
   end
 

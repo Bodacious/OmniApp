@@ -9,9 +9,10 @@ module OmniWasm
   module UI
     ##
     # The ruby_wasm app layer: turns clicks and form submits into use
-    # case calls on the domain's TodoService, then re-renders. Like the
-    # server apps, it asks the domain and never touches an adapter;
-    # unlike them, it runs in the browser, so there are no page loads.
+    # case calls on the domain's TodoService, on the browser's one list
+    # (a TodoService::UserList), then re-renders. Like the server apps,
+    # it asks the domain and never touches an adapter; unlike them, it
+    # runs in the browser, so there are no page loads.
     class App
       FILTERS = {
         'all' => ->(_todo) { true },
@@ -39,8 +40,8 @@ module OmniWasm
 
       attr_reader :composition
 
-      def todo_service
-        composition.todo_service
+      def list
+        composition.list
       end
 
       def submitted(event)
@@ -50,7 +51,7 @@ module OmniWasm
         elsif (form = Dom.closest(event, "[data-testid='todo-tag-form']"))
           event.call(:preventDefault)
           tags = form.call(:querySelector, "[data-testid='todo-tag-input']")[:value].to_s
-          act { todo_service.tag(Dom.data(form, 'id'), tags) }
+          act { list.tag(Dom.data(form, 'id'), tags) }
           render
         end
       end
@@ -60,9 +61,9 @@ module OmniWasm
         return unless target
 
         case Dom.data(target, 'action')
-        when 'complete' then act { todo_service.complete(Dom.data(target, 'id')) }
-        when 'untag' then act { todo_service.untag(Dom.data(target, 'id'), Dom.data(target, 'tag')) }
-        when 'delete' then act { todo_service.delete(Dom.data(target, 'id')) }
+        when 'complete' then act { list.complete(Dom.data(target, 'id')) }
+        when 'untag' then act { list.untag(Dom.data(target, 'id'), Dom.data(target, 'tag')) }
+        when 'delete' then act { list.delete(Dom.data(target, 'id')) }
         when 'persistence' then switch_persistence(Dom.data(target, 'persistence'))
         else return ui_only(target)
         end
@@ -84,7 +85,7 @@ module OmniWasm
       end
 
       def add(title_input, tags_input)
-        todo = todo_service.add(title_input[:value].to_s, tags_input[:value].to_s)
+        todo = list.add(title_input[:value].to_s, tags_input[:value].to_s)
         @error = nil
         @fresh_id = todo.id
         title_input[:value] = ''
@@ -122,11 +123,11 @@ module OmniWasm
       end
 
       def render
-        todos = todo_service.todos(tagged: @tag)
+        todos = list.todos(tagged: @tag)
         counts = FILTERS.transform_values { |keep| todos.count(&keep) }
         Dom.fill('list', View.list(todos.select(&FILTERS.fetch(@filter)), @filter, @tag, @fresh_id))
         Dom.fill('filters', View.filters(@filter, counts))
-        Dom.fill('tag-filter', View.tag_filter(todo_service.tags, @tag))
+        Dom.fill('tag-filter', View.tag_filter(list.tags, @tag))
         Dom.fill('summary', View.summary(counts.fetch('active')))
         Dom.fill('error', View.error(@error))
         Dom.fill('badge', View.badge(composition.stack))
@@ -143,7 +144,7 @@ module OmniWasm
       # went through.
       def light_up_diagram
         action = composition.tracer.actions.reverse.find do |span|
-          !span.label.start_with?('TodoService#todos', 'TodoService#tags')
+          !span.label.start_with?('UserList#todos', 'UserList#tags')
         end
         return unless action
 

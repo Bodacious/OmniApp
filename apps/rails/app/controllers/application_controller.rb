@@ -44,8 +44,8 @@ class ApplicationController < ActionController::Base
     value if value.is_a?(String)
   end
 
-  def render_page(page, status: :ok, **options)
-    context = omni.view_context(page, user: current_user, hidden_fields: csrf_hidden_field, **options)
+  def render_page(page, status: :ok, **)
+    context = omni.view_context(page, user: current_user, hidden_fields: csrf_hidden_field, **)
     locals = context.locals.merge(stylesheet: context.stylesheet.html_safe) # rubocop:disable Rails/OutputSafety
     render template: 'index', layout: false, locals: locals, status: status
   end

@@ -45,7 +45,8 @@ class AccountsTest < Minitest::Test
   def test_sign_in_fails_the_same_way_for_a_wrong_password_an_unknown_or_a_malformed_email
     @accounts.sign_up(email: 'ada@example.com', password: 'correct horse')
 
-    [%w[ada@example.com wrong-horse], %w[bob@example.com correct-horse], ['not an email', 'x']].each do |email, password|
+    attempts = [%w[ada@example.com wrong-horse], %w[bob@example.com correct-horse], ['not an email', 'x']]
+    attempts.each do |email, password|
       error = assert_raises(Accounts::SignInFailed) { @accounts.sign_in(email: email, password: password) }
 
       assert_equal 'Email or password is incorrect', error.message

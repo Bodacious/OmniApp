@@ -20,9 +20,9 @@ module OmniWasm
         'ruby_memory'
       end
 
-      def all
+      def in_list(list_id)
         note('Hash#values')
-        @todos.values
+        @todos.values.select { |todo| todo.list_id == list_id.to_s }
       end
 
       def find(id)

@@ -37,7 +37,7 @@ Feature: The todo app on CRuby compiled to WebAssembly
     When I add a todo titled "Buy milk"
     Then the inspector shows these calls for it, in order:
       | layer    | call                                   |
-      | use_case | TodoService#add("Buy milk")            |
+      | use_case | UserList#add("Buy milk")               |
       | port     | IdGenerator#next_id                    |
       | adapter  | crypto.randomUUID()                    |
       | port     | TodoRepository#save                    |
@@ -49,8 +49,8 @@ Feature: The todo app on CRuby compiled to WebAssembly
   Scenario: A rejected title never reaches the id generator
     When I add a todo titled "   "
     Then the inspector shows these calls for it, in order:
-      | layer    | call                   |
-      | use_case | TodoService#add("   ") |
+      | layer    | call                |
+      | use_case | UserList#add("   ") |
 
   Scenario: Tagging, filtering by tag and removing a tag
     When I add a todo titled "Buy milk" tagged "Errands, #Home"

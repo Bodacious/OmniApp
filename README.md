@@ -1,7 +1,9 @@
 # Omni
 
 A to-do app that exists to show hexagonal (ports-and-adapters) architecture.
-The business logic in `domain/` is plain Ruby that depends on nothing. Around it
+People sign up and sign in. Each user owns lists, and each list holds its
+own todos, which can be tagged. The business logic in `domain/` is plain
+Ruby that depends on nothing. Around it
 sit three swappable axes: the app layer, the persistence adapter, and the
 interface (template language). The same domain files run unchanged in every
 combination, including compiled to JavaScript by Opal and run by Node, and
@@ -23,14 +25,22 @@ the CI matrix read it.
 ```
 domain/                    Plain Ruby. Requires nothing outside itself.
   model/                   The model: depends on nothing at all
-    todo.rb                  The entity: a title that can't be blank, at most 5 tags
+    user.rb                  An account: a normalised email and a password digest (never the password)
+    list.rb                  A named list, owned by one user
+    todo.rb                  The entity: on one list, a title that can't be blank, at most 5 tags
     tag.rb                   A value object: normalised (#Home -> home), letters, digits, dashes
-  todo_service.rb          The use cases: list and filter by tag, add, complete, tag, untag, delete
+  accounts.rb              The use cases for accounts: sign up, sign in
+  todo_service.rb          The use cases for lists and todos, always on behalf of a user:
+                             create, open and delete lists; add, complete, tag, untag and delete todos
   ports/                   What the use cases need from outside, which adapters implement:
-    todo_repository.rb       storing todos (synchronous)
+    user_repository.rb       storing users
+    list_repository.rb       storing lists
+    todo_repository.rb       storing todos (all three synchronous)
+    password_hasher.rb       turning a password into a digest, and checking one
     id_generator.rb          new ids (so identity never depends on a database)
 adapters/                  Ruby adapters, shared by Rails and Sinatra
   persistence/sql/         Sequel: SQLite in memory, or Postgres via DATABASE_URL
+  passwords/               scrypt, from OpenSSL
   ids/                     SecureRandom UUIDs
   interface/erb/, slim/    The page template, once per engine; plain HTML plus locals
 lib/omni/                  Stack selection (OMNI_*) and the Ruby composition root
@@ -38,26 +48,54 @@ apps/
   sinatra/                 Sinatra app layer
   rails/                   Rails app layer (ActionController + ActionView only; no Active Record)
   opal_node/               Ruby compiled with Opal and run by Node, with its own adapters:
-    app/omni_node/adapters/  node:sqlite (DatabaseSync), pg-native (querySync), node:crypto
+    app/omni_node/adapters/  node:sqlite (DatabaseSync), pg-native (querySync), node:crypto (scrypt, UUIDs)
   ruby_wasm/               CRuby compiled to WebAssembly, in the browser (outside the matrix; see below)
 features/                  One set of Cucumber specs, run unchanged against every cell
 bin/                       omni, omni-test, omni-matrix, omni-domain-check, omni-wasm, omni-wasm-test
 ```
 
-Each app layer only translates HTTP into use-case calls on `TodoService` and
-renders a shared template. The composition root reads the stack from the
-environment, builds the adapters and injects them into the domain. `/health`
-reports what was actually built (the connected database, the loaded template
-engine), not an echo of the environment.
+Each app layer only translates HTTP into use-case calls on `Accounts` and
+`TodoService`, and renders a shared template. The composition root reads
+the stack from the environment, builds the adapters and injects them into
+the domain. `/health` reports what was actually built (the connected
+database, the loaded template engine), not an echo of the environment.
 
 The model and the use cases are kept apart on purpose:
-- `Todo` and `Tag` never load or save themselves.
-- `TodoService` is the application service that coordinates them with
-  the outside world. It does that only through the ports, which are
-  interfaces the domain defines.
+- `User`, `List`, `Todo` and `Tag` never load or save themselves.
+- `Accounts` and `TodoService` are the application services that
+  coordinate them with the outside world. They do that only through the
+  ports, which are interfaces the domain defines.
 - Adapters depend on the domain; the domain depends on no adapter.
 - The SQL adapters store tags in a `todo_tags` join table. The domain
   only ever sees `Todo#tags`.
+
+### Users, sign-in and who owns what
+
+- **Ownership is a domain rule.** Every `TodoService` use case takes the
+  user it acts for. `TodoService#list(user, id)` opens one of that user's
+  lists, and a todo is found only within its own list. Someone else's
+  list, or a todo from another list, raises `TodoService::NotFound`
+  exactly as a missing one does, so every app answers 404 and ids reveal
+  nothing.
+- **Accounts are the domain's too.** Emails are normalised
+  (`Ada@Example.com` is `ada@example.com`) and must be unique. Passwords
+  need 8 characters. A wrong password and an unknown email get the same
+  answer.
+- **Passwords go through the `PasswordHasher` port.** The domain never
+  sees how they're hashed. Both adapters use scrypt (N=16384, r=8, p=1),
+  one through OpenSSL in Ruby and one through `node:crypto` in Node.
+  They write the same format, `scrypt$16384$8$1$<salt>$<hash>`, so an
+  account made on a Ruby stack signs in on `opal_node` against the same
+  Postgres, and vice versa.
+- **Who is signed in is the app layer's business.** The domain only
+  ever receives a `User`.
+  - Rails: its session, reset on sign-in, with its CSRF token on every form.
+  - Sinatra: its cookie session.
+  - `opal_node`: its own HMAC-signed cookie.
+
+  The cookies are HttpOnly and SameSite=Lax. Set `SESSION_SECRET` to keep
+  sessions across restarts; without it, each process makes up a random
+  secret.
 
 ## Running the demo
 
@@ -96,22 +134,27 @@ change where it listens. For `opal_node`, `bin/omni` compiles the bundle first
 
 1. **The matrix.** `bin/omni-matrix` prints the 10 cells, and the one exclusion with its reason.
 2. **Sinatra on in-memory SQLite.** Boot `sinatra / sqlite_memory / erb`.
-   - Add a couple of todos and complete one.
+   - You're asked to sign in. Create an account, then a list or two.
+   - Open a list, add a couple of todos and complete one.
    - Submit a blank title to see the domain's rule come back as an error.
    - Add tags (`home, #Urgent` becomes `home` and `urgent`), then filter by one.
      Try a sixth tag, or `not ok!`, and see the model's rules on every stack.
-   - Restart the server: the in-memory todos are gone.
+   - Restart the server: the in-memory accounts, lists and todos are gone.
 3. **Rails on Postgres, with Slim.** Stop the server and boot `rails / postgres / slim`.
    - It's the same page, but the badge says rails / postgres / slim.
-   - Add todos. They're in Postgres now.
+   - Sign up, make a list and add todos. They're in Postgres now.
+   - Sign up again as someone else, in a private window. Paste the first
+     user's list address: 404, because the domain says it isn't yours.
 4. **The same domain on Node.** Stop it and boot `opal_node / postgres / erb`.
-   - The todos Rails just wrote are there. It's the same table, now read by Ruby compiled to JavaScript, through `pg-native`.
+   - Sign in with the account you made on Rails. Node checks the password
+     Ruby hashed: the same scrypt format, through `node:crypto`.
+   - The lists and todos Rails just wrote are there. It's the same tables, now read by Ruby compiled to JavaScript, through `pg-native`.
    - `ps aux | grep omni.js` shows it really is a Node process.
 5. **The domain is pure.** `bin/omni-domain-check` does two things:
    - loads every `domain/` file with `ruby --disable-gems`;
    - compiles `domain/` alone with Opal and runs the use cases on Node.
 
-   Open `domain/todo_service.rb` and `domain/ports/`: nothing in them knows about Rails, Sinatra, SQL or Node.
+   Open `domain/todo_service.rb`, `domain/accounts.rb` and `domain/ports/`: nothing in them knows about Rails, Sinatra, SQL, HTTP sessions or Node.
 6. **No silent defaults.** Each of these stops at boot with a message saying what to fix:
    - `bin/omni` with nothing set;
    - `OMNI_APP=opal_node OMNI_PERSISTENCE=postgres OMNI_INTERFACE=slim bin/omni`.
@@ -133,10 +176,10 @@ stacks need no database at all.
 - stops the stack.
 
 The command is the same locally and in CI. Before every scenario, the specs:
-- reset the todos;
+- reset the data: every user, list and todo;
 - check that `/health` matches `OMNI_*`, so a misconfigured cell fails rather than testing the wrong stack.
 
-The specs delete every todo, so give them the `omni_test` database, not the one you demo from:
+The specs delete everything, so give them the `omni_test` database, not the one you demo from:
 
 ```sh
 export DATABASE_URL=postgres://postgres:postgres@localhost:5432/omni_test
@@ -144,7 +187,7 @@ export DATABASE_URL=postgres://postgres:postgres@localhost:5432/omni_test
 OMNI_APP=opal_node OMNI_PERSISTENCE=sqlite_memory OMNI_INTERFACE=erb bin/omni-test
 bin/omni-matrix --run                     # every cell in turn, then a pass/fail table
 bin/omni-matrix --run --app rails         # filter by any axis
-bundle exec rake test                     # domain unit tests + the repository contract on each Ruby adapter
+bundle exec rake test                     # domain unit tests + the port contracts on each Ruby adapter
 bin/omni-domain-check                     # the domain purity checks
 ```
 
@@ -194,6 +237,11 @@ What the interface adds over the server-rendered pages:
 - **Ruby in the console.** `omniRuby("RUBY_PLATFORM")` in the browser console
   evaluates Ruby in the page's VM.
 
+It has no accounts yet. The browser has one user, who owns one list, and
+the page works on that list through the same `TodoService::UserList` the
+server apps use. The composition root makes them with fixed ids, so the
+todos kept in localStorage are still that list's after a reload.
+
 It isn't a cell of the stack matrix. The matrix specs drive a server-side
 stack through `/health` and `/__test__/reset`, and here there's no server-side
 stack. Its own specs cover the same behaviour (adding, tagging, the domain's rules,
@@ -208,8 +256,9 @@ CI runs them in the `ruby_wasm · browser` job.
 
 ### Adding an adapter
 
-1. Write it against the port in `domain/ports/`, and run the contract in
-   `domain/test/support/todo_repository_contract.rb` against it.
+1. Write it against the port in `domain/ports/`, and run that port's
+   contract against it. The contracts are in `domain/test/support/`
+   (`*_contract.rb`), one per storage port and one for the password hasher.
 2. Register it:
    - persistence: `adapters/persistence/sql.rb`, or `CompositionRoot::PERSISTENCE` in `apps/opal_node`;
    - interface: add a template directory in `adapters/interface/`.

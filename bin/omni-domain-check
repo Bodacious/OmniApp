@@ -23,7 +23,7 @@ clean_env = { 'RUBYOPT' => nil, 'RUBYLIB' => nil, 'BUNDLE_GEMFILE' => nil, 'BUND
 system(clean_env, RbConfig.ruby, '--disable-gems', '-e', load_all, *files.map { |f| File.join(DOMAIN, f) },
        exception: false) || abort('FAIL: domain/ needs something outside the Ruby standard library')
 
-puts "2/2 Compiling domain/ alone with Opal and running it on Node"
+puts '2/2 Compiling domain/ alone with Opal and running it on Node'
 require 'bundler/setup'
 require 'fileutils'
 require 'opal'

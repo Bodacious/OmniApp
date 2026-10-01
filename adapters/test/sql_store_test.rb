@@ -77,6 +77,6 @@ class ScryptPasswordHasherTest < Minitest::Test
   end
 
   def test_digests_use_the_shared_scrypt_format
-    assert_match(/\Ascrypt\$16384\$8\$1\$[A-Za-z0-9+\/=]+\$[A-Za-z0-9+\/=]+\z/, password_hasher.digest('x' * 8))
+    assert_match(%r{\Ascrypt\$16384\$8\$1\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+\z}, password_hasher.digest('x' * 8))
   end
 end

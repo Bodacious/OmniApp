@@ -102,7 +102,8 @@ class TodoTest < Minitest::Test
   end
 
   def test_todos_with_the_same_state_are_equal
-    assert_equal Todo.new(id: 'a', list_id: 'l1', title: 'x', tags: 'b'), Todo.new(id: 'a', list_id: 'l1', title: 'x', tags: ['b'])
+    assert_equal Todo.new(id: 'a', list_id: 'l1', title: 'x', tags: 'b'),
+                 Todo.new(id: 'a', list_id: 'l1', title: 'x', tags: ['b'])
     refute_equal Todo.new(id: 'a', list_id: 'l1', title: 'x'), Todo.new(id: 'a', list_id: 'l1', title: 'x').complete
     refute_equal Todo.new(id: 'a', list_id: 'l1', title: 'x'), Todo.new(id: 'a', list_id: 'l1', title: 'x', tags: 'b')
   end

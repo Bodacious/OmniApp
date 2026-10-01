@@ -39,7 +39,8 @@ module OmniNode
       url = `new URL(#{request}.url, 'http://localhost')`
       path = `#{url}.pathname`
       result = begin
-        @router.call(Request.new(verb, path, params(`#{url}.searchParams`), form(body)))
+        @router.call(Request.new(verb, path, params(`#{url}.searchParams`), form(body),
+                                 Node.to_ruby(`#{request}.headers.cookie`)))
       rescue Exception => e # rubocop:disable Lint/RescueException -- JS errors too; keep serving
         $stderr.puts "#{e.class}: #{e.message}"
         Response.new(500, { 'content-type' => 'text/plain' }, 'Internal Server Error')

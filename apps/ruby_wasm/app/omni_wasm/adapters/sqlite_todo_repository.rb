@@ -24,6 +24,7 @@ module OmniWasm
         CREATE TABLE IF NOT EXISTS todos (
           position INTEGER PRIMARY KEY AUTOINCREMENT,
           id TEXT NOT NULL UNIQUE,
+          list_id TEXT,
           title TEXT NOT NULL,
           completed INTEGER NOT NULL DEFAULT 0
         )
@@ -36,7 +37,7 @@ module OmniWasm
       SQL
 
       UPSERT = <<~SQL
-        INSERT INTO todos (id, title, completed) VALUES (?, ?, ?)
+        INSERT INTO todos (id, list_id, title, completed) VALUES (?, ?, ?, ?)
         ON CONFLICT (id) DO UPDATE SET title = excluded.title, completed = excluded.completed
       SQL
 
@@ -47,17 +48,20 @@ module OmniWasm
         @persistence_name = persistence_name
         @tracer = tracer
         SCHEMA.each { |statement| query(statement) }
+        add_list_id
       end
 
-      def all
-        tags = tags_by_todo(query('SELECT todo_id, tag FROM todo_tags'))
-        query('SELECT id, title, completed FROM todos ORDER BY position').map do |row|
-          build(row, tags.fetch(row[:id].to_s, []))
-        end
+      def in_list(list_id)
+        tags = tags_by_todo(query(<<~SQL, list_id.to_s))
+          SELECT todo_tags.todo_id, todo_tags.tag FROM todo_tags
+          JOIN todos ON todos.id = todo_tags.todo_id WHERE todos.list_id = ?
+        SQL
+        query('SELECT id, list_id, title, completed FROM todos WHERE list_id = ? ORDER BY position', list_id.to_s)
+          .map { |row| build(row, tags.fetch(row[:id].to_s, [])) }
       end
 
       def find(id)
-        row = query('SELECT id, title, completed FROM todos WHERE id = ?', id.to_s).first
+        row = query('SELECT id, list_id, title, completed FROM todos WHERE id = ?', id.to_s).first
         return nil unless row
 
         build(row, tags_by_todo(query('SELECT todo_id, tag FROM todo_tags WHERE todo_id = ?', id.to_s))
@@ -66,7 +70,7 @@ module OmniWasm
 
       def save(todo)
         transaction do
-          query(UPSERT, todo.id, todo.title, todo.completed? ? 1 : 0)
+          query(UPSERT, todo.id, todo.list_id, todo.title, todo.completed? ? 1 : 0)
           query('DELETE FROM todo_tags WHERE todo_id = ?', todo.id)
           todo.tags.each { |tag| query('INSERT INTO todo_tags (todo_id, tag) VALUES (?, ?)', todo.id, tag.name) }
         end
@@ -92,6 +96,14 @@ module OmniWasm
 
       private
 
+      # A todos table kept in localStorage from before todos belonged to
+      # lists has no list_id column yet.
+      def add_list_id
+        return if query('PRAGMA table_info(todos)').any? { |column| column[:name].to_s == 'list_id' }
+
+        query('ALTER TABLE todos ADD COLUMN list_id TEXT')
+      end
+
       # Rows come back as a JS array of plain objects.
       def query(sql, *bind)
         @tracer&.note(:adapter, "SQL #{sql.split.join(' ')}")
@@ -115,7 +127,8 @@ module OmniWasm
       end
 
       def build(row, tag_names)
-        Todo.new(id: row[:id].to_s, title: row[:title].to_s, completed: row[:completed].to_i == 1, tags: tag_names)
+        Todo.new(id: row[:id].to_s, list_id: row[:list_id].to_s, title: row[:title].to_s,
+                 completed: row[:completed].to_i == 1, tags: tag_names)
       end
     end
   end

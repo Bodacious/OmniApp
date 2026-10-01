@@ -26,5 +26,9 @@ Rails:
   Include:
     - "apps/rails/**/*"
 
+# The domain's tests are plain Minitest, which has no assert_not_*.
+Rails/RefuteMethods:
+  Enabled: false
+
 Style/Documentation:
   Enabled: false

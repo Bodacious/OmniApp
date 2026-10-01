@@ -171,8 +171,8 @@ module Omni
       value if value.is_a?(String)
     end
 
-    def render_page(page, **options)
-      settings.page.render(settings.composition.view_context(page, user: @user, **options))
+    def render_page(page, **)
+      settings.page.render(settings.composition.view_context(page, user: @user, **))
     end
   end
 end

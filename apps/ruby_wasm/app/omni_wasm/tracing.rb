@@ -10,7 +10,7 @@ module OmniWasm
   # it, and what the adapter did underneath. Spans nest, so one action
   # reads as a small tree:
   #
-  #   TodoService#add("Buy milk")     use case
+  #   UserList#add("Buy milk")        use case
   #     IdGenerator#next_id           port
   #     TodoRepository#save(Todo …)   port
   #       SQL INSERT INTO todos …     adapter
@@ -81,49 +81,50 @@ module OmniWasm
       id.to_s[0, 8]
     end
 
-    # Wraps the domain's TodoService: the calls the UI makes.
-    class TodoService
-      def initialize(service, tracer)
-        @service = service
+    # Wraps the list the UI works on, a TodoService::UserList: the use
+    # case calls the UI makes.
+    class UserList
+      def initialize(list, tracer)
+        @list = list
         @tracer = tracer
       end
 
       def todos(tagged: nil)
         call = tagged ? "todos(tagged: #{tagged.inspect})" : 'todos'
-        trace(call) { |span| @service.todos(tagged: tagged).tap { |todos| span.detail = "#{todos.size} todos" } }
+        trace(call) { |span| @list.todos(tagged: tagged).tap { |todos| span.detail = "#{todos.size} todos" } }
       end
 
       def tags
-        trace('tags') { |span| @service.tags.tap { |tags| span.detail = "#{tags.size} tags" } }
+        trace('tags') { |span| @list.tags.tap { |tags| span.detail = "#{tags.size} tags" } }
       end
 
       def add(title, tags = [])
         call = tags.to_s.strip.empty? ? "add(#{title.inspect})" : "add(#{title.inspect}, #{tags.inspect})"
-        trace(call) { |span| @service.add(title, tags).tap { |todo| span.detail = "Todo #{Traced.short(todo.id)}" } }
+        trace(call) { |span| @list.add(title, tags).tap { |todo| span.detail = "Todo #{Traced.short(todo.id)}" } }
       end
 
       def complete(id)
-        trace("complete(#{Traced.short(id)})") { @service.complete(id) }
+        trace("complete(#{Traced.short(id)})") { @list.complete(id) }
       end
 
       def tag(id, tags)
         trace("tag(#{Traced.short(id)}, #{tags.inspect})") do |span|
-          @service.tag(id, tags).tap { |todo| span.detail = todo.tags.map { |tag| "##{tag}" }.join(' ') }
+          @list.tag(id, tags).tap { |todo| span.detail = todo.tags.map { |tag| "##{tag}" }.join(' ') }
         end
       end
 
       def untag(id, tag)
-        trace("untag(#{Traced.short(id)}, #{tag.inspect})") { @service.untag(id, tag) }
+        trace("untag(#{Traced.short(id)}, #{tag.inspect})") { @list.untag(id, tag) }
       end
 
       def delete(id)
-        trace("delete(#{Traced.short(id)})") { @service.delete(id) }
+        trace("delete(#{Traced.short(id)})") { @list.delete(id) }
       end
 
       private
 
       def trace(call)
-        @tracer.span(:use_case, "TodoService##{call}") do |span|
+        @tracer.span(:use_case, "UserList##{call}") do |span|
           yield span
         rescue StandardError => e
           span.detail = "raised #{e.class}: #{e.message}"
@@ -145,8 +146,10 @@ module OmniWasm
         @repository.persistence_name
       end
 
-      def all
-        port('all') { |span| @repository.all.tap { |todos| span.detail = "#{todos.size} todos" } }
+      def in_list(list_id)
+        port("in_list(#{Traced.short(list_id)})") do |span|
+          @repository.in_list(list_id).tap { |todos| span.detail = "#{todos.size} todos" }
+        end
       end
 
       def find(id)

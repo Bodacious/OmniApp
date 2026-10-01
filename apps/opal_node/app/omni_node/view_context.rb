@@ -8,17 +8,23 @@ module OmniNode
   class ViewContext
     ESCAPES = { '&' => '&amp;', '<' => '&lt;', '>' => '&gt;', '"' => '&quot;', "'" => '&#39;' }.freeze
 
-    attr_reader :todos, :tags, :current_tag, :error, :stack
+    attr_reader :page, :user, :lists, :list, :todos, :tags, :current_tag, :error, :email, :stack
 
-    def initialize(todos:, stack:, tags: [], current_tag: nil, error: nil)
+    def initialize(page:, stack:, user: nil, lists: [], list: nil, todos: [], tags: [], current_tag: nil,
+                   error: nil, email: nil)
+      @page = page.to_s
+      @user = user
+      @lists = lists
+      @list = list
       @todos = todos
       @tags = tags
       @current_tag = current_tag
-      @stack = stack
       @error = error
+      @email = email
+      @stack = stack
     end
 
-    # No CSRF token outside Rails.
+    # No CSRF token outside Rails: the session cookie is SameSite=Lax.
     def hidden_fields
       ''
     end
