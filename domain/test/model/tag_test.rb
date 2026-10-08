@@ -3,21 +3,16 @@
 require 'test_helper'
 require 'model/tag'
 
-class TagTest < Minitest::Test
-  def test_it_is_normalised_to_lowercase_without_a_leading_hash
+class TagTest < ActiveSupport::TestCase
+  test '.new normalises the name to lowercase without a leading hash' do
     assert_equal 'home', Tag.new('  #Home ').name
   end
 
-  def test_tags_with_the_same_name_are_equal
-    assert_equal Tag.new('home'), Tag.new('#HOME')
-    assert_equal 1, [Tag.new('home'), Tag.new('Home')].uniq.size
-  end
-
-  def test_it_allows_letters_numbers_and_single_dashes
+  test '.new allows letters, numbers and single dashes' do
     %w[home q3 follow-up 2026-plans].each { |name| assert_equal name, Tag.new(name).name }
   end
 
-  def test_malformed_tags_are_invalid
+  test '.new when the name is malformed raises Invalid' do
     ['not ok', 'bad!', '-dash', 'dash-', 'dou--ble', 'émoji✓'].each do |name|
       error = assert_raises(Tag::Invalid) { Tag.new(name) }
 
@@ -25,30 +20,49 @@ class TagTest < Minitest::Test
     end
   end
 
-  def test_a_blank_tag_is_invalid
+  test '.new when the name is blank raises Invalid' do
     assert_raises(Tag::Invalid) { Tag.new(' # ') }
   end
 
-  def test_a_long_tag_is_invalid
+  test '.new when the name is too long raises Invalid' do
     error = assert_raises(Tag::Invalid) { Tag.new('a' * 25) }
 
     assert_equal 'Tags can be at most 24 characters', error.message
   end
 
-  def test_invalid_tags_are_invalid_input
+  test '.new when the name is malformed raises InvalidInput' do
     assert_raises(InvalidInput) { Tag.new('bad!') }
   end
 
-  def test_list_parses_free_text_into_sorted_unique_tags
+  test '.list parses free text into sorted, unique tags' do
     assert_equal %w[home urgent work], Tag.list('work, #Home urgent,,home').map(&:name)
   end
 
-  def test_list_accepts_names_and_tags
+  test '.list accepts names and tags' do
     assert_equal %w[a b], Tag.list(['b', Tag.new('a'), 'B']).map(&:name)
   end
 
-  def test_list_of_nothing_is_empty
+  test '.list of blank text is empty' do
     assert_empty Tag.list('  , ')
+  end
+
+  test '.list of nil is empty' do
     assert_empty Tag.list(nil)
+  end
+
+  test '#== when the names normalise the same is true' do
+    assert_equal Tag.new('home'), Tag.new('#HOME')
+  end
+
+  test '#hash when the names normalise the same is the same' do
+    assert_equal 1, [Tag.new('home'), Tag.new('Home')].uniq.size
+  end
+
+  test '#<=> orders tags by name' do
+    assert_equal %w[a b c], [Tag.new('c'), Tag.new('a'), Tag.new('b')].sort.map(&:name)
+  end
+
+  test '#to_s is the name' do
+    assert_equal 'home', Tag.new('#Home').to_s
   end
 end

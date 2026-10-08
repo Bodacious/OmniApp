@@ -1,5 +1,5 @@
 Feature: Accounts
-  Signing up and in are the domain's Accounts use cases. Each app layer
+  Signing up and in follow the domain's rules for a User. Each app layer
   remembers who is signed in its own way (a Rails session, a Sinatra
   cookie session, a signed cookie in Node); the rules are the same.
 

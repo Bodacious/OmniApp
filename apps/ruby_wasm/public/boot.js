@@ -1,13 +1,13 @@
 // Boots the ruby_wasm app. This file is the only JavaScript in it:
 //
 // 1. Start SQLite, compiled to WebAssembly, and wrap it in a small
-//    synchronous facade (window.omniSqlite) for the Ruby adapter.
+//    synchronous facade (window.omniSqlite) for the Ruby repository.
 // 2. Download CRuby 3.4, compiled to WebAssembly (wasm32-wasi).
-// 3. Mount this repo's Ruby files (the domain, its port contract and
+// 3. Mount this repo's Ruby files (the domain, its repository contract and
 //    apps/ruby_wasm/app) into CRuby's virtual filesystem at /omni,
 //    laid out exactly as on disk, so require_relative just works.
 // 4. require apps/ruby_wasm/app/main.rb. From then on it's Ruby: the
-//    UI, the composition root and the adapters all run in CRuby, and
+//    UI, the composition root and the repositories all run in CRuby, and
 //    reach the browser through the js gem.
 import { ConsoleStdout, Directory, File, OpenFile, PreopenDirectory, WASI } from "@bjorn3/browser_wasi_shim";
 import { RubyVM } from "@ruby/wasm-wasi";
@@ -21,10 +21,10 @@ const progressBar = bootPanel.querySelector("[data-boot-progress]");
 const status = (text) => { statusLine.textContent = text; };
 
 // SQLite's own API is synchronous once initialised, like the domain's
-// repository port. Ruby sees three kinds of database, all SQLite:
+// repositories. Ruby sees three kinds of database, all SQLite:
 // "memory" (gone on reload), "local_storage" (kept in localStorage, so
 // it survives a reload) and "session_storage" (a scratch database the
-// port contract runs against, so it never touches your todos).
+// repository contract runs against, so it never touches your todos).
 function sqliteFacade(sqlite3) {
   return {
     version: sqlite3.version.libVersion,

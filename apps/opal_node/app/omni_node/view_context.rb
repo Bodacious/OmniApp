@@ -3,7 +3,7 @@
 module OmniNode
   ##
   # What the shared ERB template sees when Opal renders it: the same
-  # names as adapters/interface/view_context.rb on the Ruby side. The
+  # names as presentation/view_context.rb on the Ruby side. The
   # compiled template runs with an instance of this as its self.
   class ViewContext
     ESCAPES = { '&' => '&amp;', '<' => '&lt;', '>' => '&gt;', '"' => '&quot;', "'" => '&#39;' }.freeze
@@ -29,7 +29,7 @@ module OmniNode
       ''
     end
 
-    # adapters/interface/omni.css, embedded at build time.
+    # presentation/omni.css, embedded at build time.
     def stylesheet
       STYLESHEET
     end

@@ -1,6 +1,6 @@
 # Runs the shared Cucumber specs against every valid cell of the stack
 # matrix. The cells come from config/stack_matrix.yml via
-# bin/omni-matrix, so adding an adapter there adds its cells here.
+# bin/omni-matrix, so adding a value there adds its cells here.
 name: stack-matrix
 
 on:
@@ -91,7 +91,7 @@ jobs:
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-      - name: Domain tests and the repository contract on every Ruby adapter
+      - name: Domain tests, the repository contracts on the Ruby infrastructure, and the architecture rules
         run: bundle exec rake test
 
   ruby-wasm:

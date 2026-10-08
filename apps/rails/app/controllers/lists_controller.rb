@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 ##
-# The signed-in user's lists, through the domain's TodoService. Someone
-# else's list is TodoService::NotFound, which ApplicationController
-# turns into a 404.
+# The signed-in user's lists, through the domain's ListRepository.
+# Someone else's list is NotFound, which ApplicationController turns
+# into a 404.
 class ListsController < ApplicationController
   before_action :require_user
 
@@ -12,18 +12,18 @@ class ListsController < ApplicationController
   end
 
   def create
-    list = todo_service.create_list(current_user, string_param(:name))
+    list = lists.save(List.new(id: lists.next_identity, owner_id: current_user.id, name: string_param(:name)))
     redirect_to "/lists/#{list.id}", status: :see_other
   rescue InvalidInput => e
     render_page('lists', error: e.message, status: :unprocessable_content)
   end
 
   def show
-    render_page('list', list: todo_service.list(current_user, params[:list_id]), tag: string_param(:tag))
+    render_page('list', list: lists.fetch(params[:list_id], owner: current_user), tag: string_param(:tag))
   end
 
   def destroy
-    todo_service.delete_list(current_user, params[:list_id])
+    lists.remove(lists.fetch(params[:list_id], owner: current_user))
     redirect_to '/', status: :see_other
   end
 end

@@ -45,7 +45,7 @@ When('I switch persistence to {string}') do |persistence|
   expect(page).to have_css("#{testid('stack-badge')} [data-axis='persistence']", exact_text: persistence)
 end
 
-When('I run the port contract') do
+When('I run the repository contract') do
   find(testid('run-contract')).click
 end
 
@@ -103,10 +103,12 @@ Then('the inspector shows these calls for it, in order:') do |table|
   expected = table.hashes.map { |row| [row['layer'], row['call']] }
   # Match on the title attribute: it holds the exact call, where the
   # visible text collapses whitespace.
-  expect(page).to(have_css("#{testid('trace-entry')}[data-layer='use_case']") { |entry| entry['title'] == expected.first.last })
+  expect(page).to(have_css("#{testid('trace-entry')}[data-layer='action']") do |entry|
+    entry['title'] == expected.first.last
+  end)
   entries = all(testid('trace-entry')).map { |entry| [entry['data-layer'], entry['title']] }
-  start = entries.index { |layer, call| layer == 'use_case' && call == expected.first.last }
-  finish = (start + 1...entries.size).find { |index| entries[index].first == 'use_case' } || entries.size
+  start = entries.index { |layer, call| layer == 'action' && call == expected.first.last }
+  finish = (start + 1...entries.size).find { |index| entries[index].first == 'action' } || entries.size
   actual = entries[start...finish]
   expect(actual.size).to eq(expected.size)
   actual.zip(expected).each do |(layer, call), (expected_layer, expected_call)|

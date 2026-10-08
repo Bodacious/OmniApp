@@ -7,7 +7,7 @@
 # 1. MRI, started with --disable-gems, requires every domain file. Any
 #    require of a gem, or of a library that is only a gem, fails.
 # 2. Opal compiles every domain file with nothing but domain/ on its
-#    load path, and Node runs the result through the use cases once.
+#    load path, and Node runs the result through the model once.
 #
 # This is what CI runs; it needs `bundle install` (for Opal) and node.
 
@@ -28,86 +28,91 @@ require 'bundler/setup'
 require 'fileutils'
 require 'opal'
 
-# A smoke run through every use case, with throwaway adapters written
-# inline: nothing but the domain and Opal's corelib is on the path.
-# (A non-interpolating heredoc: the #{} inside is for Opal, not MRI.)
+# A smoke run through the whole model, with throwaway repositories
+# written inline: nothing but the domain and Opal's corelib is on the
+# path. (A non-interpolating heredoc: the #{} inside is for Opal, not
+# MRI.)
 SMOKE = <<~'RUBY'
-  # Included after each port, so its methods come before the port's
-  # abstract ones in the ancestor chain.
+  # Included after each repository, so its methods come before the
+  # abstract ones in the ancestor chain. Lists are kept as copies, as a
+  # database would.
   module SmokeStore
     def items; @items ||= {}; end
+    def next_identity; @count = (@count || 0) + 1; "smoke-#{@count}"; end
     def find(id); items[id]; end
     def save(item); items[item.id] = item; end
-    def delete(id); !items.delete(id).nil?; end
     def where; items.values.select { |item| yield item }; end
   end
 
   class SmokeUsers
-    include Ports::UserRepository
+    include UserRepository
     include SmokeStore
     def find_by_email(email); where { |user| user.email == email }.first; end
   end
 
   class SmokeLists
-    include Ports::ListRepository
+    include ListRepository
     include SmokeStore
-    def owned_by(user_id); where { |list| list.owner_id == user_id }; end
-  end
-
-  class SmokeTodos
-    include Ports::TodoRepository
-    include SmokeStore
-    def in_list(list_id); where { |todo| todo.list_id == list_id }; end
+    def copy(list); List.new(id: list.id, owner_id: list.owner_id, name: list.name, todos: list.todos); end
+    def find(id); items[id] && copy(items[id]); end
+    def save(list); items[list.id] = copy(list); list; end
+    def owned_by(user); where { |list| list.owned_by?(user) }.map { |list| copy(list) }; end
+    def remove(list); items.delete(list.id); nil; end
   end
 
   class SmokeHasher
-    include Ports::PasswordHasher
+    include PasswordHasher
     def digest(password); "smoke$#{password.reverse}"; end
     def matches?(password, digest); digest == "smoke$#{password.reverse}"; end
-  end
-
-  class SmokeIds
-    include Ports::IdGenerator
-    def initialize; @count = 0; end
-    def next_id; @count += 1; "smoke-#{@count}"; end
   end
 
   def expect_invalid(what)
     yield
     raise "accepted #{what}"
-  rescue InvalidInput, TodoService::NotFound
+  rescue InvalidInput, NotFound
   end
 
-  ids = SmokeIds.new
-  accounts = Accounts.new(users: SmokeUsers.new, password_hasher: SmokeHasher.new, id_generator: ids)
-  service = TodoService.new(lists: SmokeLists.new, todos: SmokeTodos.new, id_generator: ids)
+  users = SmokeUsers.new
+  lists = SmokeLists.new
+  hasher = SmokeHasher.new
 
-  ada = accounts.sign_up(email: ' Ada@Example.com ', password: 'correct horse')
-  raise 'sign in failed' unless accounts.sign_in(email: 'ada@example.com', password: 'correct horse') == ada
-  expect_invalid('a wrong password') { accounts.sign_in(email: 'ada@example.com', password: 'nope nope') }
-  expect_invalid('a short password') { accounts.sign_up(email: 'bob@example.com', password: 'short') }
-  bob = accounts.sign_up(email: 'bob@example.com', password: 'another one')
+  ada = users.add(User.register(id: users.next_identity, email: ' Ada@Example.com ', password: 'correct horse',
+                                hasher: hasher))
+  raise 'sign in failed' unless users.account_for('ada@example.com').authenticate('correct horse', hasher) == ada
+  expect_invalid('a wrong password') { users.account_for('ada@example.com').authenticate('nope nope', hasher) }
+  expect_invalid('an unknown email') { users.account_for('who@example.com').authenticate('correct horse', hasher) }
+  expect_invalid('a short password') { User.register(id: 'x', email: 'bob@example.com', password: 'short', hasher: hasher) }
+  expect_invalid('a taken email') do
+    users.add(User.register(id: users.next_identity, email: 'ada@example.com', password: 'another one', hasher: hasher))
+  end
+  bob = users.add(User.register(id: users.next_identity, email: 'bob@example.com', password: 'another one',
+                                hasher: hasher))
 
-  groceries = service.list(ada, service.create_list(ada, 'Groceries').id)
-  milk = groceries.add('  Buy milk ', 'Errands, #Home')
-  walk = groceries.add('Walk the dog', 'home')
+  groceries = lists.save(List.new(id: lists.next_identity, owner_id: ada.id, name: 'Groceries'))
+  groceries = lists.fetch(groceries.id, owner: ada)
+  milk = groceries.add(id: lists.next_identity, title: '  Buy milk ', tags: 'Errands, #Home')
+  walk = groceries.add(id: lists.next_identity, title: 'Walk the dog', tags: 'home')
   groceries.complete(milk.id)
   groceries.tag(milk.id, 'urgent')
   groceries.untag(milk.id, 'errands')
-  groceries.delete(walk.id)
-  expect_invalid('a blank title') { groceries.add('   ') }
-  expect_invalid('a malformed tag') { groceries.add('Buy milk', 'not ok!') }
+  groceries.remove(walk.id)
+  expect_invalid('a blank title') { groceries.add(id: lists.next_identity, title: '   ') }
+  expect_invalid('a malformed tag') { groceries.add(id: lists.next_identity, title: 'Buy milk', tags: 'not ok!') }
   expect_invalid('a sixth tag') { groceries.tag(milk.id, 'a b c d') }
-  expect_invalid("someone else's list") { service.list(bob, groceries.id) }
+  expect_invalid('a todo from elsewhere') { groceries.complete('elsewhere') }
+  expect_invalid("someone else's list") { lists.fetch(groceries.id, owner: bob) }
+  raise 'stored before it was saved' unless lists.find(groceries.id).todos.empty?
+  lists.save(groceries)
 
-  todos = groceries.todos(tagged: 'HOME').map { |todo| [todo.title, todo.completed?, todo.tags.map(&:name)] }
+  stored = lists.fetch(groceries.id, owner: ada)
+  todos = stored.todos(tagged: 'HOME').map { |todo| [todo.title, todo.completed?, todo.tags.map(&:name)] }
   raise "unexpected todos: #{todos.inspect}" unless todos == [['Buy milk', true, %w[home urgent]]]
-  counts = groceries.tags.map { |count| [count.tag.name, count.todo_count] }
+  counts = stored.tags.map { |count| [count.tag.name, count.todo_count] }
   raise "unexpected tag counts: #{counts.inspect}" unless counts == [['home', 1], ['urgent', 1]]
-  raise 'bob can see lists' unless service.lists(bob).empty?
-  service.delete_list(ada, groceries.id)
-  raise 'list not deleted' unless service.lists(ada).empty?
-  puts 'Opal: domain compiled and every use case ran'
+  raise 'bob can see lists' unless lists.owned_by(bob).empty?
+  lists.remove(stored)
+  raise 'list not removed' unless lists.owned_by(ada).empty?
+  puts 'Opal: domain compiled and the whole model ran'
 RUBY
 
 builder = Opal::Builder.new

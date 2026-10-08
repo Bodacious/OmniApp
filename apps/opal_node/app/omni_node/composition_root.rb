@@ -1,14 +1,11 @@
 # frozen_string_literal: true
 
-require 'accounts'
-require 'todo_service'
 require 'omni_node/node'
 require 'omni_node/view_context'
 require 'omni_node/session_cookie'
-require 'omni_node/adapters/sql_drivers'
-require 'omni_node/adapters/sql_repositories'
-require 'omni_node/adapters/crypto_scrypt_password_hasher'
-require 'omni_node/adapters/crypto_id_generator'
+require 'omni_node/infrastructure/sql_drivers'
+require 'omni_node/infrastructure/sql_repositories'
+require 'omni_node/infrastructure/crypto_scrypt_password_hasher'
 
 module OmniNode
   class StackError < StandardError; end
@@ -21,21 +18,21 @@ module OmniNode
 
   ##
   # The composition root for the Opal app: reads the stack from the
-  # environment, builds this app's own adapters for it, and hands them
-  # to the domain. The axes and exclusions are config/stack_matrix.yml,
+  # environment and builds this app's own infrastructure for it: the
+  # domain's repositories and the password hasher a User needs. The axes and exclusions are config/stack_matrix.yml,
   # embedded at build time as OmniNode::MATRIX.
   class CompositionRoot
     APP = 'opal_node'
 
     # The SQL driver for each persistence. The repositories on top are
-    # the same for both (adapters/sql_repositories.rb).
+    # the same for both (infrastructure/sql_repositories.rb).
     PERSISTENCE = {
-      'sqlite_memory' => ->(_env) { Adapters::SqliteDriver.new(':memory:') },
+      'sqlite_memory' => ->(_env) { Infrastructure::SqliteDriver.new(':memory:') },
       'postgres' => lambda do |env|
         url = env.call('DATABASE_URL')
         raise StackError, 'OMNI_PERSISTENCE=postgres needs DATABASE_URL' if url.nil? || url.empty?
 
-        Adapters::PostgresDriver.new(url)
+        Infrastructure::PostgresDriver.new(url)
       end
     }.freeze
 
@@ -64,14 +61,14 @@ module OmniNode
       value
     end
 
-    attr_reader :accounts, :todo_service, :session, :stack
+    attr_reader :password_hasher, :session, :stack
 
     def initialize(stack, env)
       connect = PERSISTENCE.fetch(stack.persistence) do
-        raise StackError, "opal_node has no persistence adapter for #{stack.persistence}"
+        raise StackError, "opal_node has no persistence for #{stack.persistence}"
       end
       begin
-        @store = Adapters::SqlStore.new(connect.call(env))
+        @store = Infrastructure::SqlStore.new(connect.call(env))
       rescue StackError
         raise
       rescue Exception => e # rubocop:disable Lint/RescueException -- JS errors from the drivers
@@ -81,14 +78,25 @@ module OmniNode
       @template = Template["omni/#{stack.interface}/index"]
       raise StackError, "opal_node has no compiled template for interface #{stack.interface}" unless @template
 
-      ids = Adapters::CryptoIdGenerator.new
-      @accounts = Accounts.new(users: @store.users, password_hasher: Adapters::CryptoScryptPasswordHasher.new,
-                               id_generator: ids)
-      @todo_service = TodoService.new(lists: @store.lists, todos: @store.todos, id_generator: ids)
+      @password_hasher = Infrastructure::CryptoScryptPasswordHasher.new
       @session = SessionCookie.new(env.call('SESSION_SECRET'))
       @test_mode = env.call('OMNI_ENV') == 'test'
       # What is running, read back from what was built.
       @stack = Stack.new(APP, @store.persistence_name, stack.interface)
+    end
+
+    # Every User, as a UserRepository.
+    #
+    # @return [UserRepository]
+    def users
+      @store.users
+    end
+
+    # Every List, as a ListRepository.
+    #
+    # @return [ListRepository]
+    def lists
+      @store.lists
     end
 
     def health
@@ -99,7 +107,7 @@ module OmniNode
       @test_mode
     end
 
-    # Test-only plumbing, not a use case: empties the store directly.
+    # Test-only plumbing, not part of the domain: empties the store directly.
     def reset!
       raise StackError, 'reset! only exists when OMNI_ENV=test' unless test_mode?
 
@@ -108,8 +116,7 @@ module OmniNode
 
     # The page (sign_in, sign_up, lists or list) for the signed-in +user+,
     # as in the Ruby composition root: for the list page, the open +list+
-    # (a TodoService::UserList) with only the todos tagged +tag+ if one is
-    # given. A malformed +tag+ shows every todo, with the domain's message.
+    # with only the todos tagged +tag+ if one is given. A malformed +tag+ shows every todo, with the domain's message.
     def render_page(page, user: nil, list: nil, tag: nil, error: nil, email: nil)
       todos = []
       tags = []
@@ -123,7 +130,7 @@ module OmniNode
         todos = list.todos(tagged: current_tag)
         tags = list.tags
       end
-      @template.render(ViewContext.new(page: page, user: user, lists: user ? todo_service.lists(user) : [],
+      @template.render(ViewContext.new(page: page, user: user, lists: user ? lists.owned_by(user) : [],
                                        list: list, todos: todos, tags: tags, current_tag: current_tag,
                                        error: error, email: email, stack: stack))
     end

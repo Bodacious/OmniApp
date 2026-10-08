@@ -21,13 +21,14 @@ module OmniWasmServer
   VENDOR_PACKAGES = %w[@ruby/3.4-wasm-wasi @ruby/wasm-wasi @bjorn3/browser_wasi_shim @sqlite.org/sqlite-wasm].freeze
   NO_CACHE = { 'cache-control' => 'no-cache' }.freeze
 
-  # The Ruby the browser mounts: the whole domain, the domain's port
-  # contract (so the page can run it), and this app's own code. Paths
+  # The Ruby the browser mounts: the whole domain, the domain's list
+  # repository contract (so the page can run it), and this app's own
+  # code. Paths
   # are repo-relative and mounted under /omni, so require_relative
   # resolves exactly as it does on disk.
   def self.sources
     domain = Dir.glob('domain/**/*.rb', base: ROOT).reject { |path| path.start_with?('domain/test/') }
-    contract = ['domain/test/support/todo_repository_contract.rb']
+    contract = ['domain/test/support/list_repository_contract.rb']
     app = Dir.glob('apps/ruby_wasm/app/**/*.rb', base: ROOT)
     (domain + contract + app).sort
   end
@@ -45,7 +46,7 @@ module OmniWasmServer
   end
 
   SharedStylesheet = lambda do |_env|
-    css = File.read(File.join(ROOT, 'adapters/interface/omni.css'))
+    css = File.read(File.join(ROOT, 'presentation/omni.css'))
     [200, NO_CACHE.merge('content-type' => 'text/css; charset=utf-8'), [css]]
   end
 

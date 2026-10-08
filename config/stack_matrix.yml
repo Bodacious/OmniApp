@@ -5,7 +5,8 @@
 # why. bin/omni refuses to boot an excluded cell, bin/omni-matrix
 # lists the valid cells, and CI runs exactly those.
 #
-# Adding an adapter means writing it and adding its name here.
+# Adding a persistence or interface means writing it and adding its
+# name here.
 
 axes:
   persistence:

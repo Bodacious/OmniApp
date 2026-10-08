@@ -7,12 +7,12 @@ module OmniWasm
     ##
     # Renders each region of the page as HTML. The list keeps the same
     # data-testid hooks as the server-rendered templates in
-    # adapters/interface/, so the same kinds of step drive both.
+    # presentation/, so the same kinds of step drive both.
     module View
       extend ERB::Util
 
       FILTERS = { 'all' => 'All', 'active' => 'Active', 'completed' => 'Completed' }.freeze
-      LAYERS = { use_case: 'use case', port: 'port', adapter: 'adapter' }.freeze
+      LAYERS = { action: 'action', repository: 'repository', storage: 'storage' }.freeze
 
       module_function
 
@@ -118,7 +118,8 @@ module OmniWasm
       end
 
       def trace(actions)
-        return %(<li class="trace__empty">Calls across the ports appear here as you use the app.</li>) if actions.empty?
+        empty = %(<li class="trace__empty">Calls through the layers appear here as you use the app.</li>)
+        return empty if actions.empty?
 
         actions.reverse.map { |span| trace_span(span, 0) }.join
       end

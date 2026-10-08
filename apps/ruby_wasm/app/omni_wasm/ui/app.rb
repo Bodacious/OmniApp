@@ -3,15 +3,15 @@
 require 'js'
 require_relative 'dom'
 require_relative 'view'
-require_relative '../contract_runner'
+require_relative '../contract'
 
 module OmniWasm
   module UI
     ##
-    # The ruby_wasm app layer: turns clicks and form submits into use
-    # case calls on the domain's TodoService, on the browser's one list
-    # (a TodoService::UserList), then re-renders. Like the server apps,
-    # it asks the domain and never touches an adapter; unlike them, it
+    # The ruby_wasm app layer: turns clicks and form submits into
+    # changes to the browser's one List, which it fetches from the
+    # domain's ListRepository and saves back, then re-renders. Like the
+    # server apps, it only ever talks to the domain; unlike them, it
     # runs in the browser, so there are no page loads.
     class App
       FILTERS = {
@@ -40,8 +40,8 @@ module OmniWasm
 
       attr_reader :composition
 
-      def list
-        composition.list
+      def lists
+        composition.lists
       end
 
       def submitted(event)
@@ -51,7 +51,8 @@ module OmniWasm
         elsif (form = Dom.closest(event, "[data-testid='todo-tag-form']"))
           event.call(:preventDefault)
           tags = form.call(:querySelector, "[data-testid='todo-tag-input']")[:value].to_s
-          act { list.tag(Dom.data(form, 'id'), tags) }
+          id = Dom.data(form, 'id')
+          act("tag(#{Traced.short(id)}, #{tags.inspect})") { |list| list.tag(id, tags) }
           render
         end
       end
@@ -60,10 +61,13 @@ module OmniWasm
         target = Dom.closest(event, '[data-action]')
         return unless target
 
+        id = Dom.data(target, 'id')
         case Dom.data(target, 'action')
-        when 'complete' then act { list.complete(Dom.data(target, 'id')) }
-        when 'untag' then act { list.untag(Dom.data(target, 'id'), Dom.data(target, 'tag')) }
-        when 'delete' then act { list.delete(Dom.data(target, 'id')) }
+        when 'complete' then act("complete(#{Traced.short(id)})") { |list| list.complete(id) }
+        when 'untag'
+          tag = Dom.data(target, 'tag')
+          act("untag(#{Traced.short(id)}, #{tag.inspect})") { |list| list.untag(id, tag) }
+        when 'delete' then act("remove(#{Traced.short(id)})") { |list| list.remove(id) }
         when 'persistence' then switch_persistence(Dom.data(target, 'persistence'))
         else return ui_only(target)
         end
@@ -85,7 +89,10 @@ module OmniWasm
       end
 
       def add(title_input, tags_input)
-        todo = list.add(title_input[:value].to_s, tags_input[:value].to_s)
+        title = title_input[:value].to_s
+        tags = tags_input[:value].to_s
+        call = tags.strip.empty? ? "add(#{title.inspect})" : "add(#{title.inspect}, #{tags.inspect})"
+        todo = change(call) { |list| list.add(id: lists.next_identity, title: title, tags: tags) }
         @error = nil
         @fresh_id = todo.id
         title_input[:value] = ''
@@ -100,12 +107,27 @@ module OmniWasm
         render
       end
 
-      def act
+      def act(call, &)
         @error = nil
         @fresh_id = nil
-        yield
-      rescue InvalidInput, TodoService::NotFound => e
+        change(call, &)
+      rescue InvalidInput, NotFound => e
         @error = e.message
+      end
+
+      # Fetches the browser's list, lets the block change it, and saves
+      # it, all traced as one action.
+      def change(call)
+        composition.tracer.span(:action, "List##{call}") do |span|
+          list = lists.fetch(composition.list_id, owner: composition.user)
+          result = yield list
+          lists.save(list)
+          result
+        rescue StandardError => e
+          span.detail = "raised #{e.class}: #{e.message}"
+          span.failed = true
+          raise
+        end
       end
 
       def switch_persistence(persistence)
@@ -118,11 +140,14 @@ module OmniWasm
 
       def run_contract
         persistence = composition.persistence
-        results = ContractRunner.new(-> { composition.scratch_repository(persistence) }).run
+        results = Contract.new(-> { composition.scratch_repository(persistence) }).results
         @contract = [results, CompositionRoot::PERSISTENCE.fetch(persistence)]
       end
 
       def render
+        list = composition.tracer.span(:action, @tag ? "List#todos(tagged: #{@tag.inspect})" : 'List#todos') do
+          lists.fetch(composition.list_id, owner: composition.user)
+        end
         todos = list.todos(tagged: @tag)
         counts = FILTERS.transform_values { |keep| todos.count(&keep) }
         Dom.fill('list', View.list(todos.select(&FILTERS.fetch(@filter)), @filter, @tag, @fresh_id))
@@ -133,30 +158,22 @@ module OmniWasm
         Dom.fill('badge', View.badge(composition.stack))
         Dom.fill('persistence', View.persistence(composition.persistence, CompositionRoot::PERSISTENCE))
         name, store = CompositionRoot::DIAGRAM.fetch(composition.persistence)
-        Dom.region('adapter-name')[:textContent] = name
-        Dom.region('adapter-store')[:textContent] = store
+        Dom.region('storage-name')[:textContent] = name
+        Dom.region('storage-store')[:textContent] = store
         Dom.fill('contract', @contract ? View.contract(*@contract) : '')
         Dom.fill('trace', View.trace(composition.tracer.actions))
         light_up_diagram
       end
 
-      # Lights up the parts of the hexagon diagram the latest action
-      # went through.
+      # Lights up the parts of the layers diagram the latest change went
+      # through.
       def light_up_diagram
-        action = composition.tracer.actions.reverse.find do |span|
-          !span.label.start_with?('UserList#todos', 'UserList#tags')
-        end
+        action = composition.tracer.actions.reverse.find { |span| !span.label.start_with?('List#todos') }
         return unless action
 
-        labels = flatten(action).map(&:label)
-        parts = %w[ui use-case]
-        parts += %w[port-repository adapter-repository] if labels.any? { |label| label.start_with?('TodoRepository') }
-        parts += %w[port-ids adapter-ids] if labels.any? { |label| label.start_with?('IdGenerator') }
+        parts = %w[ui model]
+        parts += %w[repository storage] unless action.children.empty?
         Dom.pulse(parts.map { |part| "[data-part='#{part}']" }.join(','), 'lit')
-      end
-
-      def flatten(span)
-        [span] + span.children.flat_map { |child| flatten(child) }
       end
 
       def ready

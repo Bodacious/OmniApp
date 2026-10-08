@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 ##
-# The todos on one of the signed-in user's lists: each action opens the
-# list through the domain's TodoService (which checks it's theirs) and
-# runs one use case on it.
+# The todos on one of the signed-in user's lists. A todo is part of its
+# List, so each action fetches the list (which checks it's theirs),
+# changes it and saves it.
 class TodosController < ApplicationController
   before_action :require_user
 
   def create
-    change { |list| list.add(string_param(:title), string_param(:tags)) }
+    change { |list| list.add(id: lists.next_identity, title: string_param(:title), tags: string_param(:tags)) }
   end
 
   def complete
@@ -24,15 +24,16 @@ class TodosController < ApplicationController
   end
 
   def destroy
-    change { |list| list.delete(params[:id]) }
+    change { |list| list.remove(params[:id]) }
   end
 
   private
 
   def change
-    list = todo_service.list(current_user, params[:list_id])
+    list = lists.fetch(params[:list_id], owner: current_user)
     begin
       yield list
+      lists.save(list)
       redirect_to "/lists/#{list.id}", status: :see_other
     rescue InvalidInput => e
       render_page('list', list: list, error: e.message, status: :unprocessable_content)

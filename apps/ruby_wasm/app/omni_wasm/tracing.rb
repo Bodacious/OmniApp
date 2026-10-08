@@ -1,19 +1,22 @@
 # frozen_string_literal: true
 
-require_relative '../../../../domain/ports/todo_repository'
-require_relative '../../../../domain/ports/id_generator'
+require_relative '../../../../domain/model/list_repository'
 
 module OmniWasm
   ##
-  # Records what crosses the hexagon's boundary, for the inspector:
-  # each use case the UI calls, each port call the domain makes during
-  # it, and what the adapter did underneath. Spans nest, so one action
-  # reads as a small tree:
+  # Records what passes through the layers, for the inspector: each
+  # action the UI asks of a List, each repository call made for it, and
+  # what the storage did underneath. Spans nest, so one action reads as
+  # a small tree:
   #
-  #   UserList#add("Buy milk")        use case
-  #     IdGenerator#next_id           port
-  #     TodoRepository#save(Todo …)   port
-  #       SQL INSERT INTO todos …     adapter
+  #   List#add("Buy milk")               action
+  #     ListRepository#fetch(browser-)   repository
+  #       ListRepository#find(browser-)  repository
+  #         SQL SELECT … FROM lists …    storage
+  #     ListRepository#next_identity     repository
+  #       crypto.randomUUID()            storage
+  #     ListRepository#save(List …)      repository
+  #       SQL INSERT INTO todos …        storage
   class Tracer
     Span = Struct.new(:layer, :label, :detail, :ms, :children, :failed)
     KEEP = 25
@@ -46,7 +49,7 @@ module OmniWasm
 
     # Runs the block without recording anything: for re-renders after
     # UI-only actions (a filter, a contract run), which are not traffic
-    # the app sent across the ports on anyone's behalf.
+    # the app sent through the layers on anyone's behalf.
     def muted
       @muted = true
       yield
@@ -74,69 +77,21 @@ module OmniWasm
 
   ##
   # Decorators that wrap the real collaborators and report to a Tracer.
-  # Each one implements the same interface as what it wraps (the ports
-  # include the port modules), so the domain can't tell they're there.
+  # Each one is what it wraps (the repository includes ListRepository),
+  # so the domain can't tell it's there.
   module Traced
     def self.short(id)
       id.to_s[0, 8]
     end
 
-    # Wraps the list the UI works on, a TodoService::UserList: the use
-    # case calls the UI makes.
-    class UserList
-      def initialize(list, tracer)
-        @list = list
-        @tracer = tracer
-      end
+    ##
+    # Wraps a ListRepository. The storage it wraps notes what it does
+    # underneath (SQL, Hash calls) into the same Tracer.
+    class ListRepository
+      include ::ListRepository
 
-      def todos(tagged: nil)
-        call = tagged ? "todos(tagged: #{tagged.inspect})" : 'todos'
-        trace(call) { |span| @list.todos(tagged: tagged).tap { |todos| span.detail = "#{todos.size} todos" } }
-      end
-
-      def tags
-        trace('tags') { |span| @list.tags.tap { |tags| span.detail = "#{tags.size} tags" } }
-      end
-
-      def add(title, tags = [])
-        call = tags.to_s.strip.empty? ? "add(#{title.inspect})" : "add(#{title.inspect}, #{tags.inspect})"
-        trace(call) { |span| @list.add(title, tags).tap { |todo| span.detail = "Todo #{Traced.short(todo.id)}" } }
-      end
-
-      def complete(id)
-        trace("complete(#{Traced.short(id)})") { @list.complete(id) }
-      end
-
-      def tag(id, tags)
-        trace("tag(#{Traced.short(id)}, #{tags.inspect})") do |span|
-          @list.tag(id, tags).tap { |todo| span.detail = todo.tags.map { |tag| "##{tag}" }.join(' ') }
-        end
-      end
-
-      def untag(id, tag)
-        trace("untag(#{Traced.short(id)}, #{tag.inspect})") { @list.untag(id, tag) }
-      end
-
-      def delete(id)
-        trace("delete(#{Traced.short(id)})") { @list.delete(id) }
-      end
-
-      private
-
-      def trace(call)
-        @tracer.span(:use_case, "UserList##{call}") do |span|
-          yield span
-        rescue StandardError => e
-          span.detail = "raised #{e.class}: #{e.message}"
-          span.failed = true
-          raise
-        end
-      end
-    end
-
-    class TodoRepository
-      include Ports::TodoRepository
-
+      # @param repository [::ListRepository]
+      # @param tracer [Tracer]
       def initialize(repository, tracer)
         @repository = repository
         @tracer = tracer
@@ -146,44 +101,38 @@ module OmniWasm
         @repository.persistence_name
       end
 
-      def in_list(list_id)
-        port("in_list(#{Traced.short(list_id)})") do |span|
-          @repository.in_list(list_id).tap { |todos| span.detail = "#{todos.size} todos" }
-        end
+      def next_identity
+        repository('next_identity') { |span| @repository.next_identity.tap { |id| span.detail = Traced.short(id) } }
+      end
+
+      # The domain's own method, built on #find: traced so the inspector
+      # shows the ownership check around the lookup.
+      def fetch(id, owner:)
+        repository("fetch(#{Traced.short(id)})") { super }
       end
 
       def find(id)
-        port("find(#{Traced.short(id)})") { |span| @repository.find(id).tap { |todo| span.detail = todo ? 'found' : 'nil' } }
+        repository("find(#{Traced.short(id)})") do |span|
+          @repository.find(id).tap { |list| span.detail = list ? "#{list.todos.size} todos" : 'nil' }
+        end
       end
 
-      def save(todo)
-        port("save(Todo #{Traced.short(todo.id)})") { @repository.save(todo) }
+      def owned_by(user)
+        repository("owned_by(User #{Traced.short(user.id)})") { @repository.owned_by(user) }
       end
 
-      def delete(id)
-        port("delete(#{Traced.short(id)})") { |span| @repository.delete(id).tap { |deleted| span.detail = deleted.to_s } }
+      def save(list)
+        repository("save(List #{Traced.short(list.id)})") { @repository.save(list) }
+      end
+
+      def remove(list)
+        repository("remove(List #{Traced.short(list.id)})") { @repository.remove(list) }
       end
 
       private
 
-      def port(call, &)
-        @tracer.span(:port, "TodoRepository##{call}", &)
-      end
-    end
-
-    class IdGenerator
-      include Ports::IdGenerator
-
-      def initialize(id_generator, tracer)
-        @id_generator = id_generator
-        @tracer = tracer
-      end
-
-      def next_id
-        @tracer.span(:port, 'IdGenerator#next_id') do |span|
-          @tracer.note(:adapter, 'crypto.randomUUID()')
-          @id_generator.next_id.tap { |id| span.detail = Traced.short(id) }
-        end
+      def repository(call, &)
+        @tracer.span(:repository, "ListRepository##{call}", &)
       end
     end
   end

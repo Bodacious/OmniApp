@@ -9,9 +9,10 @@ require_relative '../../lib/omni/composition_root'
 
 module Omni
   ##
-  # The Sinatra app layer: HTTP in, use case calls on the domain's
-  # Accounts and TodoService, a shared template out. Everything else
-  # comes from the composition root.
+  # The Sinatra app layer: HTTP in, a shared template out. Each route
+  # loads an aggregate from its repository, tells it what to do and
+  # saves it. The rules are the domain's; everything else comes from
+  # the composition root.
   #
   # Who is signed in is kept in Sinatra's cookie session (signed,
   # HttpOnly, SameSite=Lax); the domain only ever sees a User.
@@ -33,7 +34,7 @@ module Omni
     end
 
     before do
-      @user = accounts.find(session[:user_id])
+      @user = users.find(session[:user_id])
     end
 
     # --- accounts
@@ -44,7 +45,7 @@ module Omni
     end
 
     post '/sign_in' do
-      sign_in(accounts.sign_in(email: string_param('email'), password: string_param('password')))
+      sign_in(users.account_for(string_param('email')).authenticate(string_param('password'), password_hasher))
     rescue InvalidInput => e
       status 422
       render_page('sign_in', error: e.message, email: string_param('email'))
@@ -56,7 +57,8 @@ module Omni
     end
 
     post '/sign_up' do
-      sign_in(accounts.sign_up(email: string_param('email'), password: string_param('password')))
+      sign_in(users.add(User.register(id: users.next_identity, email: string_param('email'),
+                                      password: string_param('password'), hasher: password_hasher)))
     rescue InvalidInput => e
       status 422
       render_page('sign_up', error: e.message, email: string_param('email'))
@@ -76,7 +78,7 @@ module Omni
 
     post '/lists' do
       require_user
-      list = todo_service.create_list(@user, string_param('name'))
+      list = lists.save(List.new(id: lists.next_identity, owner_id: @user.id, name: string_param('name')))
       redirect "/lists/#{list.id}", 303
     rescue InvalidInput => e
       status 422
@@ -89,14 +91,14 @@ module Omni
 
     post '/lists/:list_id/delete' do
       require_user
-      found { todo_service.delete_list(@user, params['list_id']) }
+      found { lists.remove(lists.fetch(params['list_id'], owner: @user)) }
       redirect '/', 303
     end
 
     # --- todos on a list
 
     post '/lists/:list_id/todos' do
-      change { |list| list.add(string_param('title'), string_param('tags')) }
+      change { |list| list.add(id: lists.next_identity, title: string_param('title'), tags: string_param('tags')) }
     end
 
     post '/lists/:list_id/todos/:id/complete' do
@@ -112,7 +114,7 @@ module Omni
     end
 
     post '/lists/:list_id/todos/:id/delete' do
-      change { |list| list.delete(params['id']) }
+      change { |list| list.remove(params['id']) }
     end
 
     get '/health' do
@@ -122,12 +124,16 @@ module Omni
 
     private
 
-    def accounts
-      settings.composition.accounts
+    def users
+      settings.composition.users
     end
 
-    def todo_service
-      settings.composition.todo_service
+    def lists
+      settings.composition.lists
+    end
+
+    def password_hasher
+      settings.composition.password_hasher
     end
 
     def sign_in(user)
@@ -143,14 +149,15 @@ module Omni
     # Opens the signed-in user's list from the URL, or 404.
     def with_list
       require_user
-      list = found { todo_service.list(@user, params['list_id']) }
+      list = found { lists.fetch(params['list_id'], owner: @user) }
       yield list
     end
 
-    # Runs a use case on the open list, then back to it.
+    # Changes the open list, saves it, then goes back to it.
     def change
       with_list do |list|
         found { yield list }
+        lists.save(list)
         redirect "/lists/#{list.id}", 303
       rescue InvalidInput => e
         status 422
@@ -160,7 +167,7 @@ module Omni
 
     def found
       yield
-    rescue TodoService::NotFound => e
+    rescue NotFound => e
       halt 404, e.message
     end
 

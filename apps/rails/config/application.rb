@@ -3,7 +3,7 @@
 require 'securerandom'
 require 'rails'
 # Only the parts of Rails an HTTP app layer needs. No Active Record:
-# persistence comes from the same adapters the Sinatra app uses.
+# persistence comes from the same infrastructure the Sinatra app uses.
 require 'action_controller/railtie'
 require 'action_view/railtie'
 require 'slim-rails'

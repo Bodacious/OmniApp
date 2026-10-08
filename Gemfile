@@ -42,6 +42,7 @@ group :test do
   gem 'cucumber', '~> 11.1', require: false
   gem 'cuprite', '~> 0.17', require: false
   gem 'minitest', '~> 5.25'
+  gem 'mocha', '~> 2.7'
   gem 'rspec-expectations', '~> 3.13', require: false
 end
 

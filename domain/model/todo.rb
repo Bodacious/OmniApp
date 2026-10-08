@@ -4,47 +4,39 @@ require_relative 'invalid_input'
 require_relative 'tag'
 
 ##
-# A single thing to do, on one List. A value object in practice:
-# every change returns a new Todo rather than altering this one, which
-# keeps it safe to share and behaves the same under MRI and Opal.
+# A single thing to do: an entity inside a List, reached only through
+# its list. Every change returns a new Todo rather than altering this
+# one, which keeps it safe to share and behaves the same under MRI and
+# Opal; the List keeps whichever is current.
 #
 # The rules a todo enforces about itself:
 # - it has a title (stripped, so whitespace alone doesn't count);
 # - its tags are valid Tags (see Tag), with no duplicates, and there
 #   are at most MAX_TAGS of them.
-#
-# A Todo depends on nothing outside domain/model/. In particular it
-# never loads or saves itself: that's TodoService's job, through the
-# repository port.
 class Todo
   class Invalid < InvalidInput; end
 
   BLANK_TITLE = "Title can't be blank"
   MAX_TAGS = 5
 
-  ##
-  # The title and tags as a todo would store them, or Invalid if they
-  # break its rules. Lets TodoService check input before it spends an id.
-  def self.validate(title:, tags: [])
-    title = title.to_s.strip
-    raise Invalid, BLANK_TITLE if title.empty?
+  attr_reader :id, :title, :tags
 
-    tags = Tag.list(tags)
-    raise Invalid, "A todo can have at most #{MAX_TAGS} tags" if tags.size > MAX_TAGS
-
-    [title, tags]
-  end
-
-  attr_reader :id, :list_id, :title, :tags
-
-  def initialize(id:, list_id:, title:, completed: false, tags: [])
+  # @param id [String]
+  # @param title [String, nil]
+  # @param completed [Boolean]
+  # @param tags [String, Array<String, Tag>] free text ("home, urgent") or a list
+  # @raise [ArgumentError] without an id
+  # @raise [InvalidInput] for a blank title, a malformed tag or too many tags
+  def initialize(id:, title:, completed: false, tags: [])
     raise ArgumentError, 'A todo needs an id' if id.nil? || id.to_s.empty?
-    raise ArgumentError, 'A todo needs a list' if list_id.nil? || list_id.to_s.empty?
 
     @id = id.to_s
-    @list_id = list_id.to_s
-    @title, @tags = Todo.validate(title: title, tags: tags)
-    @tags.freeze
+    @title = title.to_s.strip
+    raise Invalid, BLANK_TITLE if @title.empty?
+
+    @tags = Tag.list(tags).freeze
+    raise Invalid, "A todo can have at most #{MAX_TAGS} tags" if @tags.size > MAX_TAGS
+
     @completed = completed ? true : false
   end
 
@@ -52,38 +44,40 @@ class Todo
     @completed
   end
 
+  # @param tag [String, Tag]
+  # @return [Boolean]
   def tagged?(tag)
     tags.include?(tag.is_a?(Tag) ? tag : Tag.new(tag))
   end
 
+  # @return [Todo] a completed copy
   def complete
-    copy(completed: true)
+    Todo.new(id: id, title: title, completed: true, tags: tags)
   end
 
-  # A copy with these tags added. Raises Invalid if that would make too
-  # many.
+  # A copy with these tags added.
+  #
+  # @param new_tags [String, Array<String, Tag>]
+  # @return [Todo]
+  # @raise [InvalidInput] for a malformed tag, or if that would make too many
   def tag(new_tags)
-    copy(tags: tags + Tag.list(new_tags))
+    Todo.new(id: id, title: title, completed: completed?, tags: tags + Tag.list(new_tags))
   end
 
   # A copy without this tag. Removing a tag it doesn't have is harmless.
+  #
+  # @param tag [String, Tag]
+  # @return [Todo]
   def untag(tag)
     tag = Tag.new(tag) unless tag.is_a?(Tag)
-    copy(tags: tags.reject { |existing| existing == tag })
+    Todo.new(id: id, title: title, completed: completed?, tags: tags.reject { |existing| existing == tag })
   end
 
   def ==(other)
     other.is_a?(Todo) &&
       other.id == id &&
-      other.list_id == list_id &&
       other.title == title &&
       other.completed? == completed? &&
       other.tags == tags
-  end
-
-  private
-
-  def copy(completed: completed?, tags: self.tags)
-    Todo.new(id: id, list_id: list_id, title: title, completed: completed, tags: tags)
   end
 end

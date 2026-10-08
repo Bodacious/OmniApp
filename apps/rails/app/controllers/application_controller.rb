@@ -10,7 +10,7 @@ class ApplicationController < ActionController::Base
 
   prepend_view_path File.dirname(Rails.configuration.x.omni.template_path)
 
-  rescue_from TodoService::NotFound do |error|
+  rescue_from NotFound do |error|
     render plain: error.message, status: :not_found
   end
 
@@ -20,16 +20,20 @@ class ApplicationController < ActionController::Base
     Rails.configuration.x.omni
   end
 
-  def accounts
-    omni.accounts
+  def users
+    omni.users
   end
 
-  def todo_service
-    omni.todo_service
+  def lists
+    omni.lists
+  end
+
+  def password_hasher
+    omni.password_hasher
   end
 
   def current_user
-    @current_user ||= accounts.find(session[:user_id])
+    @current_user ||= users.find(session[:user_id])
   end
 
   def require_user

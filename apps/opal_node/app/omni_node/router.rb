@@ -10,8 +10,8 @@ module OmniNode
 
   ##
   # The HTTP contract every app layer honours, in plain Ruby: a Request
-  # in, a Response out, synchronous calls into the domain's Accounts and
-  # TodoService. The routes are the Sinatra app's. The Node plumbing
+  # in, a Response out, and in between, synchronous calls on the
+  # domain's aggregates and repositories. The routes are the Sinatra app's. The Node plumbing
   # around it is in HttpServer.
   class Router
     SEGMENT = '([^/]+)'
@@ -23,7 +23,7 @@ module OmniNode
       ['GET', '/sign_up', :sign_up_form],
       ['POST', '/sign_up', :sign_up],
       ['POST', '/sign_out', :sign_out],
-      ['GET', '/', :lists],
+      ['GET', '/', :show_lists],
       ['POST', '/lists', :create_list],
       ['GET', '/lists/:list_id', :show_list],
       ['POST', '/lists/:list_id/delete', :delete_list],
@@ -38,7 +38,11 @@ module OmniNode
       @composition = composition
     end
 
-    def call(request)
+    # The response the route matching +request+ gives, or a 404.
+    #
+    # @param request [Request]
+    # @return [Response]
+    def response_for(request)
       ROUTES.each do |verb, pattern, action|
         next unless verb == request.verb && (match = pattern.match(request.path))
 
@@ -93,7 +97,7 @@ module OmniNode
       end
 
       def sign_in
-        start_session('sign_in') { accounts.sign_in(email: param('email'), password: param('password')) }
+        start_session('sign_in') { users.account_for(param('email')).authenticate(param('password'), password_hasher) }
       end
 
       def sign_up_form
@@ -101,7 +105,10 @@ module OmniNode
       end
 
       def sign_up
-        start_session('sign_up') { accounts.sign_up(email: param('email'), password: param('password')) }
+        start_session('sign_up') do
+          users.add(User.register(id: users.next_identity, email: param('email'), password: param('password'),
+                                  hasher: password_hasher))
+        end
       end
 
       def sign_out
@@ -110,13 +117,14 @@ module OmniNode
 
       # --- lists
 
-      def lists
+      def show_lists
         signed_in { page('lists') }
       end
 
       def create_list
         signed_in do
-          redirect("/lists/#{todo_service.create_list(user, param('name')).id}")
+          list = lists.save(List.new(id: lists.next_identity, owner_id: user.id, name: param('name')))
+          redirect("/lists/#{list.id}")
         rescue InvalidInput => e
           page('lists', error: e.message, status: 422)
         end
@@ -128,14 +136,14 @@ module OmniNode
 
       def delete_list(list_id)
         signed_in do
-          found { todo_service.delete_list(user, list_id) } || redirect('/')
+          found { lists.remove(lists.fetch(list_id, owner: user)) } || redirect('/')
         end
       end
 
       # --- todos on a list
 
       def add_todo(list_id)
-        change(list_id) { |list| list.add(param('title'), param('tags')) }
+        change(list_id) { |list| list.add(id: lists.next_identity, title: param('title'), tags: param('tags')) }
       end
 
       def complete_todo(list_id, id)
@@ -151,17 +159,21 @@ module OmniNode
       end
 
       def delete_todo(list_id, id)
-        change(list_id) { |list| list.delete(id) }
+        change(list_id) { |list| list.remove(id) }
       end
 
       private
 
-      def accounts
-        @composition.accounts
+      def users
+        @composition.users
       end
 
-      def todo_service
-        @composition.todo_service
+      def lists
+        @composition.lists
+      end
+
+      def password_hasher
+        @composition.password_hasher
       end
 
       def session
@@ -172,7 +184,7 @@ module OmniNode
       def user
         return @user if defined?(@user)
 
-        @user = accounts.find(session.user_id(@request.cookie))
+        @user = users.find(session.user_id(@request.cookie))
       end
 
       def start_session(form)
@@ -190,25 +202,28 @@ module OmniNode
       def with_list(list_id)
         signed_in do
           list = nil
-          found { list = todo_service.list(user, list_id) } || yield(list)
+          found { list = lists.fetch(list_id, owner: user) } || yield(list)
         end
       end
 
-      # Runs a use case on the open list, then back to it.
+      # Changes the open list, saves it, then goes back to it.
       def change(list_id)
         with_list(list_id) do |list|
-          found { yield list } || redirect("/lists/#{list.id}")
+          found do
+            yield list
+            lists.save(list)
+          end || redirect("/lists/#{list.id}")
         rescue InvalidInput => e
           page('list', list: list, error: e.message, status: 422)
         end
       end
 
-      # Runs a use case, returning nil, or a 404 if it names a list or
+      # Runs the block, returning nil, or a 404 if it names a list or
       # todo the user doesn't have.
       def found
         yield
         nil
-      rescue TodoService::NotFound => e
+      rescue NotFound => e
         Handler.not_found(e.message)
       end
 

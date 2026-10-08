@@ -7,7 +7,7 @@
 #
 # The bundle holds Opal's runtime, the domain (compiled from domain/,
 # the same files the Ruby apps require), this app's own Ruby from app/,
-# and the shared ERB templates from adapters/interface/erb/, compiled
+# and the shared ERB templates from presentation/erb/, compiled
 # with Opal::ERB. The stack matrix and the shared stylesheet are
 # embedded too, so the running app reads no files. bin/omni runs this
 # before booting an opal_node stack.
@@ -24,7 +24,7 @@ builder.append_paths(File.join(ROOT, 'domain'), File.join(__dir__, 'app'))
 builder.build('opal')
 
 matrix = YAML.safe_load_file(File.join(ROOT, 'config', 'stack_matrix.yml'))
-stylesheet = File.read(File.join(ROOT, 'adapters', 'interface', 'omni.css'))
+stylesheet = File.read(File.join(ROOT, 'presentation', 'omni.css'))
 builder.build_str(<<~RUBY, 'omni_node/embedded.rb')
   module OmniNode
     MATRIX = #{matrix.inspect}.freeze
@@ -34,7 +34,7 @@ RUBY
 
 # The shared templates. Opal::ERB turns each into Ruby that registers
 # Template["omni/erb/<name>"]; Opal then compiles that like any file.
-Dir[File.join(ROOT, 'adapters', 'interface', 'erb', '*.html.erb')].each do |path|
+Dir[File.join(ROOT, 'presentation', 'erb', '*.html.erb')].each do |path|
   name = "omni/erb/#{File.basename(path, '.html.erb')}"
   builder.build_str(Opal::ERB::Compiler.new(File.read(path), name).prepared_source, "#{name}.rb")
 end

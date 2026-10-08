@@ -33,24 +33,38 @@ Feature: The todo app on CRuby compiled to WebAssembly
     When I show the active todos
     Then I see the todos "Buy milk" and "Write the demo script"
 
-  Scenario: The inspector shows each call across the ports
+  Scenario: The inspector shows each call through the layers
     When I add a todo titled "Buy milk"
     Then the inspector shows these calls for it, in order:
-      | layer    | call                                   |
-      | use_case | UserList#add("Buy milk")               |
-      | port     | IdGenerator#next_id                    |
-      | adapter  | crypto.randomUUID()                    |
-      | port     | TodoRepository#save                    |
-      | adapter  | SQL BEGIN                              |
-      | adapter  | SQL INSERT INTO todos                  |
-      | adapter  | SQL DELETE FROM todo_tags WHERE todo_id |
-      | adapter  | SQL COMMIT                             |
+      | layer      | call                                           |
+      | action     | List#add("Buy milk")                           |
+      | repository | ListRepository#fetch                           |
+      | repository | ListRepository#find                            |
+      | storage    | SQL SELECT id, owner_id, name FROM lists       |
+      | storage    | SQL SELECT todo_tags.todo_id, todo_tags.tag    |
+      | storage    | SQL SELECT id, title, completed FROM todos     |
+      | repository | ListRepository#next_identity                   |
+      | storage    | crypto.randomUUID()                            |
+      | repository | ListRepository#save                            |
+      | storage    | SQL BEGIN                                      |
+      | storage    | SQL INSERT INTO lists                          |
+      | storage    | SQL DELETE FROM todo_tags WHERE todo_id IN     |
+      | storage    | SQL SELECT id FROM todos WHERE list_id         |
+      | storage    | SQL INSERT INTO todos                          |
+      | storage    | SQL COMMIT                                     |
 
-  Scenario: A rejected title never reaches the id generator
+  Scenario: A rejected title is never saved
     When I add a todo titled "   "
     Then the inspector shows these calls for it, in order:
-      | layer    | call                |
-      | use_case | UserList#add("   ") |
+      | layer      | call                                       |
+      | action     | List#add("   ")                            |
+      | repository | ListRepository#fetch                       |
+      | repository | ListRepository#find                        |
+      | storage    | SQL SELECT id, owner_id, name FROM lists   |
+      | storage    | SQL SELECT todo_tags.todo_id, todo_tags.tag |
+      | storage    | SQL SELECT id, title, completed FROM todos |
+      | repository | ListRepository#next_identity               |
+      | storage    | crypto.randomUUID()                        |
 
   Scenario: Tagging, filtering by tag and removing a tag
     When I add a todo titled "Buy milk" tagged "Errands, #Home"
@@ -70,9 +84,9 @@ Feature: The todo app on CRuby compiled to WebAssembly
     Then I see the error "Tags can only use letters, numbers and dashes"
     And I see that there is nothing to do
 
-  Scenario Outline: The domain's port contract passes in the browser on every adapter
+  Scenario Outline: The domain's repository contract passes in the browser on every persistence
     When I switch persistence to "<persistence>"
-    And I run the port contract
+    And I run the repository contract
     Then every contract test passes
 
     Examples:
@@ -81,7 +95,7 @@ Feature: The todo app on CRuby compiled to WebAssembly
       | sqlite_memory        |
       | sqlite_local_storage |
 
-  Scenario: Switching adapters while the app runs
+  Scenario: Switching persistence while the app runs
     Given I have added the todos "Kept in SQLite"
     When I switch persistence to "ruby_memory"
     Then I see that there is nothing to do

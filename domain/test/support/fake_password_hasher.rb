@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require 'ports/password_hasher'
+require 'model/password_hasher'
 
 ##
-# A test double for the password hasher port: fast, salted and
+# A PasswordHasher for tests: fast, salted and
 # obviously not secure. Domain tests use it so they need no OpenSSL.
 class FakePasswordHasher
-  include Ports::PasswordHasher
+  include PasswordHasher
 
   def initialize
     @salt = 0

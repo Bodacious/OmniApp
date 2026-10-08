@@ -3,108 +3,116 @@
 require 'test_helper'
 require 'model/todo'
 
-class TodoTest < Minitest::Test
-  def test_it_has_an_id_and_a_title
-    todo = Todo.new(id: 'abc', list_id: 'l1', title: 'Buy milk')
-
-    assert_equal 'abc', todo.id
-    assert_equal 'Buy milk', todo.title
+class TodoTest < ActiveSupport::TestCase
+  test '.new is not completed by default' do
+    assert_not_predicate Todo.new(id: 'abc', title: 'Buy milk'), :completed?
   end
 
-  def test_it_is_not_completed_and_untagged_by_default
-    todo = Todo.new(id: 'abc', list_id: 'l1', title: 'Buy milk')
-
-    refute_predicate todo, :completed?
-    assert_empty todo.tags
+  test '.new is untagged by default' do
+    assert_empty Todo.new(id: 'abc', title: 'Buy milk').tags
   end
 
-  def test_the_title_is_stripped
-    assert_equal 'Buy milk', Todo.new(id: 'abc', list_id: 'l1', title: "  Buy milk \n").title
+  test '.new strips the title' do
+    assert_equal 'Buy milk', Todo.new(id: 'abc', title: "  Buy milk \n").title
   end
 
-  def test_a_blank_title_is_invalid
+  test '.new when the title is blank raises Invalid' do
     ['', '   ', "\n\t", nil].each do |title|
-      error = assert_raises(Todo::Invalid) { Todo.new(id: 'abc', list_id: 'l1', title: title) }
+      error = assert_raises(Todo::Invalid) { Todo.new(id: 'abc', title: title) }
 
       assert_equal "Title can't be blank", error.message
     end
   end
 
-  def test_an_id_and_a_list_are_required
-    assert_raises(ArgumentError) { Todo.new(id: nil, list_id: 'l1', title: 'Buy milk') }
-    assert_raises(ArgumentError) { Todo.new(id: 'abc', list_id: nil, title: 'Buy milk') }
+  test '.new without an id raises ArgumentError' do
+    assert_raises(ArgumentError) { Todo.new(id: nil, title: 'Buy milk') }
   end
 
-  def test_it_belongs_to_a_list_and_keeps_it_through_changes
-    todo = Todo.new(id: 'abc', list_id: 'l1', title: 'Buy milk')
-
-    assert_equal 'l1', todo.list_id
-    assert_equal 'l1', todo.complete.tag('home').untag('home').list_id
-  end
-
-  def test_complete_returns_a_completed_copy_and_leaves_the_original_alone
-    todo = Todo.new(id: 'abc', list_id: 'l1', title: 'Buy milk', tags: ['home'])
-
-    completed = todo.complete
-
-    assert_predicate completed, :completed?
-    assert_equal ['home'], completed.tags.map(&:name)
-    refute_predicate todo, :completed?
-  end
-
-  def test_tags_are_normalised_deduplicated_and_sorted
-    todo = Todo.new(id: 'abc', list_id: 'l1', title: 'Buy milk', tags: 'urgent, #Home home')
+  test '.new normalises, deduplicates and sorts the tags' do
+    todo = Todo.new(id: 'abc', title: 'Buy milk', tags: 'urgent, #Home home')
 
     assert_equal %w[home urgent], todo.tags.map(&:name)
   end
 
-  def test_tagged_asks_by_name_or_tag
-    todo = Todo.new(id: 'abc', list_id: 'l1', title: 'Buy milk', tags: ['home'])
-
-    assert todo.tagged?('Home')
-    assert todo.tagged?(Tag.new('home'))
-    refute todo.tagged?('work')
+  test '.new when a tag is malformed raises InvalidInput' do
+    assert_raises(InvalidInput) { Todo.new(id: 'abc', title: 'Buy milk', tags: 'not ok!') }
   end
 
-  def test_tag_returns_a_copy_with_the_tags_added
-    todo = Todo.new(id: 'abc', list_id: 'l1', title: 'Buy milk', tags: ['home'])
-
-    tagged = todo.tag('urgent, home')
-
-    assert_equal %w[home urgent], tagged.tags.map(&:name)
-    assert_equal ['home'], todo.tags.map(&:name)
-  end
-
-  def test_untag_returns_a_copy_without_the_tag
-    todo = Todo.new(id: 'abc', list_id: 'l1', title: 'Buy milk', tags: %w[home urgent])
-
-    assert_equal ['urgent'], todo.untag('#home').tags.map(&:name)
-    assert_equal %w[home urgent], todo.untag('absent').tags.map(&:name)
-  end
-
-  def test_a_todo_can_have_at_most_five_tags
-    todo = Todo.new(id: 'abc', list_id: 'l1', title: 'Busy', tags: %w[a b c d e])
-
-    error = assert_raises(Todo::Invalid) { todo.tag('f') }
+  test '.new when there are more than five tags raises Invalid' do
+    error = assert_raises(Todo::Invalid) { Todo.new(id: 'abc', title: 'Busy', tags: %w[a b c d e f]) }
 
     assert_equal 'A todo can have at most 5 tags', error.message
   end
 
-  def test_a_malformed_tag_is_invalid_input
-    assert_raises(InvalidInput) { Todo.new(id: 'abc', list_id: 'l1', title: 'Buy milk', tags: 'not ok!') }
+  test '#tagged? when given a name it carries is true' do
+    assert_operator Todo.new(id: 'abc', title: 'Buy milk', tags: ['home']), :tagged?, 'Home'
   end
 
-  def test_validate_normalises_without_needing_an_id
-    title, tags = Todo.validate(title: ' Buy milk ', tags: 'Home')
-
-    assert_equal 'Buy milk', title
-    assert_equal ['home'], tags.map(&:name)
+  test '#tagged? when given a Tag it carries is true' do
+    assert_operator Todo.new(id: 'abc', title: 'Buy milk', tags: ['home']), :tagged?, Tag.new('home')
   end
 
-  def test_todos_with_the_same_state_are_equal
-    assert_equal Todo.new(id: 'a', list_id: 'l1', title: 'x', tags: 'b'),
-                 Todo.new(id: 'a', list_id: 'l1', title: 'x', tags: ['b'])
-    refute_equal Todo.new(id: 'a', list_id: 'l1', title: 'x'), Todo.new(id: 'a', list_id: 'l1', title: 'x').complete
-    refute_equal Todo.new(id: 'a', list_id: 'l1', title: 'x'), Todo.new(id: 'a', list_id: 'l1', title: 'x', tags: 'b')
+  test '#tagged? when given a tag it lacks is false' do
+    assert_not_operator Todo.new(id: 'abc', title: 'Buy milk', tags: ['home']), :tagged?, 'work'
+  end
+
+  test '#complete returns a completed copy with the same tags' do
+    completed = Todo.new(id: 'abc', title: 'Buy milk', tags: ['home']).complete
+
+    assert_equal Todo.new(id: 'abc', title: 'Buy milk', tags: ['home'], completed: true), completed
+  end
+
+  test '#complete leaves the original alone' do
+    todo = Todo.new(id: 'abc', title: 'Buy milk')
+
+    todo.complete
+
+    assert_not_predicate todo, :completed?
+  end
+
+  test '#tag returns a copy with the tags added' do
+    todo = Todo.new(id: 'abc', title: 'Buy milk', tags: ['home'])
+
+    assert_equal %w[home urgent], todo.tag('urgent, home').tags.map(&:name)
+  end
+
+  test '#tag leaves the original alone' do
+    todo = Todo.new(id: 'abc', title: 'Buy milk', tags: ['home'])
+
+    todo.tag('urgent')
+
+    assert_equal ['home'], todo.tags.map(&:name)
+  end
+
+  test '#tag keeps the completed state' do
+    todo = Todo.new(id: 'abc', title: 'Buy milk', completed: true)
+
+    assert_predicate todo.tag('home'), :completed?
+  end
+
+  test '#tag when that would make more than five tags raises Invalid' do
+    todo = Todo.new(id: 'abc', title: 'Busy', tags: %w[a b c d e])
+
+    assert_raises(Todo::Invalid) { todo.tag('f') }
+  end
+
+  test '#untag returns a copy without the tag' do
+    todo = Todo.new(id: 'abc', title: 'Buy milk', tags: %w[home urgent])
+
+    assert_equal ['urgent'], todo.untag('#home').tags.map(&:name)
+  end
+
+  test '#untag when the todo lacks the tag changes nothing' do
+    todo = Todo.new(id: 'abc', title: 'Buy milk', tags: %w[home urgent])
+
+    assert_equal todo, todo.untag('absent')
+  end
+
+  test '#== when the id, title, completed state and tags are the same is true' do
+    assert_equal Todo.new(id: 'a', title: 'x', tags: 'b'), Todo.new(id: 'a', title: 'x', tags: ['b'])
+  end
+
+  test '#== when the completed state differs is false' do
+    assert_not_equal Todo.new(id: 'a', title: 'x'), Todo.new(id: 'a', title: 'x').complete
   end
 end

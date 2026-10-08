@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 ##
-# The behaviour every Ports::PasswordHasher adapter must provide (see
-# domain/ports/password_hasher.rb). Include it into a Minitest::Test
+# The behaviour every PasswordHasher implementation must provide (see
+# domain/model/password_hasher.rb). Include it into a Minitest::Test
 # that defines +password_hasher+.
 module PasswordHasherContract
   PASSWORD = 'correct horse battery'
 
-  def test_password_hasher_implements_the_port
-    assert_kind_of Ports::PasswordHasher, password_hasher
+  def test_password_hasher_is_a_password_hasher
+    assert_kind_of PasswordHasher, password_hasher
   end
 
   def test_a_digest_is_a_string_without_the_password_in_it

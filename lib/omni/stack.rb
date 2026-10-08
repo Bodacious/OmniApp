@@ -7,7 +7,7 @@ module Omni
   class StackError < StandardError; end
 
   ##
-  # One cell of the matrix: an app layer, a persistence adapter and an
+  # One cell of the matrix: an app layer, a persistence and an
   # interface.
   Stack = Struct.new(:app, :persistence, :interface, keyword_init: true) do
     def label

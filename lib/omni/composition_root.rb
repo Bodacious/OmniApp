@@ -1,21 +1,18 @@
 # frozen_string_literal: true
 
 require_relative 'matrix'
-require_relative '../../domain/accounts'
-require_relative '../../domain/todo_service'
-require_relative '../../adapters/persistence/sql'
-require_relative '../../adapters/passwords/scrypt_password_hasher'
-require_relative '../../adapters/ids/secure_random_id_generator'
-require_relative '../../adapters/interface/templates'
-require_relative '../../adapters/interface/view_context'
+require_relative '../../infrastructure/sql'
+require_relative '../../infrastructure/scrypt_password_hasher'
+require_relative '../../presentation/templates'
+require_relative '../../presentation/view_context'
 
 module Omni
   ##
   # The composition root for the Ruby app layers, Rails and Sinatra:
-  # the one place that reads the stack from the environment, builds the
-  # adapters it names and hands them to the domain. An app layer gets
-  # the domain's two services to call (Accounts and TodoService), a
-  # template to render and nothing else.
+  # the one place that reads the stack from the environment and builds
+  # the infrastructure it names. An app layer gets the domain's two
+  # repositories (users and lists), the password hasher a User needs,
+  # a template to render and nothing else.
   class CompositionRoot
     ##
     # Wires up the stack selected by OMNI_APP, OMNI_PERSISTENCE and
@@ -30,22 +27,32 @@ module Omni
       end
 
       new(app: app, stack: stack, env: env)
-    rescue Adapters::Persistence::Sql::ConfigurationError,
-           Adapters::Interface::Templates::ConfigurationError => e
+    rescue Infrastructure::Sql::ConfigurationError, Presentation::Templates::ConfigurationError => e
       raise StackError, e.message
     end
 
-    attr_reader :accounts, :todo_service, :template_path
+    attr_reader :password_hasher, :template_path
 
     def initialize(app:, stack:, env:)
       @app = app
-      @store = Adapters::Persistence::Sql.store(stack.persistence, env)
-      ids = Adapters::Ids::SecureRandomIdGenerator.new
-      @accounts = Accounts.new(users: @store.users, password_hasher: Adapters::Passwords::ScryptPasswordHasher.new,
-                               id_generator: ids)
-      @todo_service = TodoService.new(lists: @store.lists, todos: @store.todos, id_generator: ids)
-      @template_path = Adapters::Interface::Templates.page(stack.interface)
+      @store = Infrastructure::Sql.store(stack.persistence, env)
+      @password_hasher = Infrastructure::ScryptPasswordHasher.new
+      @template_path = Presentation::Templates.page(stack.interface)
       @test_mode = env['OMNI_ENV'] == 'test'
+    end
+
+    # Every User, as a UserRepository.
+    #
+    # @return [UserRepository]
+    def users
+      @store.users
+    end
+
+    # Every List, as a ListRepository.
+    #
+    # @return [ListRepository]
+    def lists
+      @store.lists
     end
 
     ##
@@ -70,8 +77,8 @@ module Omni
 
     ##
     # A Rack endpoint that deletes every user, list and todo, for the
-    # specs to call before each scenario. It's plumbing, not a use case,
-    # so it talks to the adapters directly. Apps mount it only when
+    # specs to call before each scenario. It's plumbing, not part of the
+    # domain, so it empties the store directly. Apps mount it only when
     # test_mode?.
     def test_reset_endpoint
       raise StackError, 'The reset endpoint only exists when OMNI_ENV=test' unless test_mode?
@@ -88,8 +95,8 @@ module Omni
     ##
     # What the page template needs for +page+ (sign_in, sign_up, lists
     # or list): the signed-in +user+, their lists, and for the list page
-    # the open +list+ (a TodoService::UserList) with its todos, only
-    # those tagged +tag+ if one is given. A malformed +tag+ shows every
+    # the open +list+ with its todos, only those tagged +tag+ if one is
+    # given. A malformed +tag+ shows every
     # todo, with the domain's message.
     def view_context(page, user: nil, list: nil, tag: nil, error: nil, email: nil, hidden_fields: '')
       todos = []
@@ -104,8 +111,8 @@ module Omni
         todos = list.todos(tagged: current_tag)
         tags = list.tags
       end
-      Adapters::Interface::ViewContext.new(
-        page: page, user: user, lists: user ? todo_service.lists(user) : [], list: list,
+      Presentation::ViewContext.new(
+        page: page, user: user, lists: user ? lists.owned_by(user) : [], list: list,
         todos: todos, tags: tags, current_tag: current_tag, error: error, email: email,
         stack: stack, hidden_fields: hidden_fields
       )

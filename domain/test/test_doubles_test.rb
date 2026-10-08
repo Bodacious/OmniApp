@@ -1,28 +1,17 @@
 # frozen_string_literal: true
 
 require 'test_helper'
-require 'support/todo_repository_contract'
 require 'support/list_repository_contract'
 require 'support/user_repository_contract'
 require 'support/password_hasher_contract'
-require 'support/in_memory_todo_repository'
 require 'support/in_memory_list_repository'
 require 'support/in_memory_user_repository'
 require 'support/fake_password_hasher'
 
 ##
-# Runs the port contracts against the domain's own test doubles, so the
-# doubles the service tests use are known to behave like the real
-# adapters do.
-class InMemoryTodoRepositoryTest < Minitest::Test
-  include TodoRepositoryContract
-
-  def repository
-    @repository ||= InMemoryTodoRepository.new
-  end
-end
-
-class InMemoryListRepositoryTest < Minitest::Test
+# Runs the contracts against the domain's own test doubles, so the
+# doubles behave as the real implementations do.
+class InMemoryListRepositoryTest < ActiveSupport::TestCase
   include ListRepositoryContract
 
   def list_repository
@@ -30,7 +19,7 @@ class InMemoryListRepositoryTest < Minitest::Test
   end
 end
 
-class InMemoryUserRepositoryTest < Minitest::Test
+class InMemoryUserRepositoryTest < ActiveSupport::TestCase
   include UserRepositoryContract
 
   def user_repository
@@ -38,7 +27,7 @@ class InMemoryUserRepositoryTest < Minitest::Test
   end
 end
 
-class FakePasswordHasherTest < Minitest::Test
+class FakePasswordHasherTest < ActiveSupport::TestCase
   include PasswordHasherContract
 
   def password_hasher
